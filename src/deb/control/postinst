@@ -2,8 +2,8 @@
 
 case "$1" in
   configure)
-    if ! [ `getent passwd monasca_api` ]; then
-      adduser --system --group monasca_api
+    if ! [ `getent passwd monasca` ]; then
+      adduser --system --group monasca
     fi
 
     #Restart does not pick up upstart job config changes stop/start is needed
