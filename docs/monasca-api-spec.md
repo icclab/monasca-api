@@ -88,30 +88,81 @@ An alarm expression is a boolean equation which if it evaluates to true with the
 
 ### Syntax
 
-At the highest level, you have an expression, which is made up of one or more subexpressions, joined by boolean logic. Parenthesis can be used for separators. In a BNF style format:
+At the highest level, you have an expression, which is made up of one or more subexpressions, joined by boolean logic. Parenthesis can be used for separators. In a BNF style format where items enclosed in [] are optional:
 
-```
-expression
-    : subexpression
-    | '(' expression ')'
-    | expression logical_operator expression
-```
+````
+<expression>
+    ::= <and_expression> <or_logical_operator> <expression> 
+    | <and_expression>
+
+<and_expression>
+	::= <sub_expression> <and_logical_operator> <and_expression> 
+	| <sub_expression>
+	
+````
+Each subexpression is made up of several parts with a couple of options:
+
+````
+<sub_expression> 
+	::= <metric> <relational_operator> <threshold_value>
+    | <function> '(' <metric> [',' period] ')' <relational_operator> threshold_value ['times' periods] 
+	| '(' expression ')'     
+
+````
+Period must an interger multiple of 60.  The default period is 60 seconds.
 
 The logical_operators are: `and` (also `&&`), `or` (also `||`).
 
-Each subexpression is made up of several parts with a couple of options:
+````
+<and_logical_operator> ::= 'and' | '&&'
+<or_logical_operator> ::= 'or' | '||'
+````
 
-```
-subexpression
-    : metric relational_operator threshold_value
-    | function '(' metric ',' period ')' relational_operator threshold_value ('times' periods)? 
-```
+A metric can be a metric name only or a metric name followed by a list of dimensions. The dimensions further qualify the metric name.
+
+
+````
+<metric>
+	::=  metric_name
+	| metric_name '{' <dimension_list> '}'
+	
+````
+
+Any number of dimensions can follow the metric name.
+
+````
+<dimension_list>
+	::= <dimension>
+	| <dimension> ',' <dimension_list>
+
+````
+
+A dimension is simply a key-value pair.
+
+````
+<dimension>
+	::= dimension_name '=' dimension_value
+	
+````
 
 The relational_operators are: `lt` (also `<`), `gt` (also `>`), `lte` (also `<=`), `gte` (also `>=`).
 
+
+````
+<relational_operator>
+	::= 'lt' | '<' | 'gt' | '>' | 'lte' | '<=' | 'gte' | '>='
+	
+````
+The list of available statistical functions include the following.
+
+```
+<function>
+	::= 'min' | 'max' | 'sum' | 'count' | 'avg' 
+	
+```
+
 Threshold values are always in the same units as the metric that they are being compared to.
 
-The first subexpression shows a direct comparison of a metric to a threshold_value, done every 60 seconds.
 
 #### Simple Example
 In this example the metric uniquely identified with the name=cpu_perc and dimension hostname=host.domain.com is compared to the threshold 95.
@@ -121,10 +172,10 @@ cpu_perc{hostname=host.domain.com} > 95
 ```
 
 #### More Complex Example
-In this example the average of the same metric as in the previous example is evaluated over a 90 second period for 3 times.
+In this example the average of the same metric as in the previous example is evaluated over a 120 second period for 3 times so that the expression will evaluate to true if the average is greater than 95 seconds for a total of 360 seconds.
 
 ```
-avg(cpu_perc{hostname=host.domain.com}, 85) > 90 times 3
+avg(cpu_perc{hostname=host.domain.com}, 120) > 95 times 3
 ```
 
 Note that period is the number of seconds for the measurement to be done on. They can only be in a multiple of 60. Periods is how many times in a row that this expression must be true before triggering the alarm. Both period and periods are optional and default to 60 and 1 respectively.
