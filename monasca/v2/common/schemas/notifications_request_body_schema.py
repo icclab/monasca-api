@@ -13,22 +13,19 @@
 # under the License.
 
 from voluptuous import Schema
-from voluptuous import Required, Any, All, Range, Optional
+from voluptuous import Optional, Required, Any, All, Length
 from monasca.openstack.common import log
-from monasca.v2.common.schemas import metric_name_schema
-from monasca.v2.common.schemas import dimensions_schema
 from monasca.v2.common.schemas import exceptions
 
 LOG = log.getLogger(__name__)
 
-metric_schema = {
-    Required('name'): metric_name_schema.metric_name_schema,
-    Optional('dimensions'): dimensions_schema.dimensions_schema,
-    Required('timestamp'): All(Any(int, float), Range(min=0)),
-    Required('value'): Any(int, float)
+notification_schema = {
+    Required('name'): Schema(All(Any(str, unicode), Length(max=250))),
+    Required('type'): Schema(Any("EMAIL", "email")),
+    Required('address'): Schema(All(Any(str, unicode), Length(max=100)))
 }
 
-request_body_schema = Schema(Any(metric_schema, [metric_schema]))
+request_body_schema = Schema(Any(notification_schema))
 
 
 def validate(msg):
