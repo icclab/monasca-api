@@ -34,7 +34,7 @@ public class SubAlarmExpressionSerializer extends JsonSerializer<AlarmSubExpress
         value.getMetricDefinition().dimensions == null ? Collections.emptyMap() : value
             .getMetricDefinition().dimensions);
     jgen.writeStringField("operator", value.getOperator().name());
-    jgen.writeNumberField("threshold", value.getThreshold());
+    jgen.writeStringField("threshold", value.getThreshold());
     jgen.writeNumberField("period", value.getPeriod());
     jgen.writeNumberField("periods", value.getPeriods());
     jgen.writeEndObject();
