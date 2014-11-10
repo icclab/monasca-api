@@ -195,7 +195,7 @@ public class AlarmDefinitionMySqlRepositoryImpl implements AlarmDefinitionReposi
         AggregateFunction function = AggregateFunction.fromJson((String) row.get("function"));
         String metricName = (String) row.get("metric_name");
         AlarmOperator operator = AlarmOperator.fromJson((String) row.get("operator"));
-        Double threshold = (Double) row.get("threshold");
+        String threshold = (String) row.get("threshold");
         Integer period = (Integer) row.get("period");
         Integer periods = (Integer) row.get("periods");
         Map<String, String> dimensions =
@@ -296,12 +296,12 @@ public class AlarmDefinitionMySqlRepositoryImpl implements AlarmDefinitionReposi
         AlarmSubExpression subExpr = subEntry.getValue();
         MetricDefinition metricDef = subExpr.getMetricDefinition();
 
+        String functionName = (subExpr.getFunction() != null ? subExpr.getFunction().name() : null);
         // Persist sub-alarm
         handle
             .insert(
                 "insert into sub_alarm_definition (id, alarm_definition_id, function, metric_name, operator, threshold, period, periods, created_at, updated_at) "
-                    + "values (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())", subAlarmId, id, subExpr
-                    .getFunction().name(), metricDef.name, subExpr.getOperator().name(), subExpr
+                    + "values (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())", subAlarmId, id, functionName, metricDef.name, subExpr.getOperator().name(), subExpr
                     .getThreshold(), subExpr.getPeriod(), subExpr.getPeriods());
 
         // Persist sub-alarm dimensions

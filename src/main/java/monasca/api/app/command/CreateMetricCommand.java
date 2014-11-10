@@ -37,17 +37,25 @@ public class CreateMetricCommand {
   public String name;
   public Map<String, String> dimensions;
   public long timestamp;
-  public double value;
+  public String value;
   public double[][] timeValues;
 
   public CreateMetricCommand() {}
 
   public CreateMetricCommand(String name, @Nullable Map<String, String> dimensions,
-      @Nullable Long timestamp, double value) {
+      @Nullable Long timestamp, String value) {
     setName(name);
     setDimensions(dimensions);
     setTimestamp(timestamp);
     this.value = value;
+  }
+  
+  public CreateMetricCommand(String name, @Nullable Map<String, String> dimensions,
+      @Nullable Long timestamp, double value) {
+    setName(name);
+    setDimensions(dimensions);
+    setTimestamp(timestamp);
+    this.value = String.valueOf(value);
   }
 
   public CreateMetricCommand(String name, @Nullable Map<String, String> dimensions,
@@ -88,8 +96,12 @@ public class CreateMetricCommand {
       return false;
     if (timestamp != other.timestamp)
       return false;
-    if (Double.doubleToLongBits(value) != Double.doubleToLongBits(other.value))
-      return false;
+    if (value == null) {
+    	if (other.value != null)
+    		return false;
+    	return true;
+    } else if (!value.equals(other.value))
+    	return false;
     return true;
   }
 
@@ -103,7 +115,7 @@ public class CreateMetricCommand {
     result = prime * result + Arrays.deepHashCode(timeValues);
     result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
     long temp;
-    temp = Double.doubleToLongBits(value);
+    temp = value.hashCode();
     result = prime * result + (int) (temp ^ (temp >>> 32));
     return result;
   }
