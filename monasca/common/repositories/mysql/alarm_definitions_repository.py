@@ -17,6 +17,7 @@ import pyodbc
 from oslo.config import cfg
 
 from monasca.common.repositories import alarm_definitions_repository
+from monasca.common.repositories.mysql.mysql_repository import MySQLRepository
 from monasca.openstack.common import log
 from monasca.openstack.common import uuidutils
 from monasca.common.repositories import exceptions
@@ -25,40 +26,85 @@ from monasca.common.repositories import exceptions
 LOG = log.getLogger(__name__)
 
 
-class AlarmDefinitionsRepository(
+class AlarmDefinitionsRepository(MySQLRepository,
         alarm_definitions_repository.AlarmDefinitionsRepository):
-    database_driver = 'MySQL ODBC 5.3 ANSI Driver'
-    database_cnxn_template = 'DRIVER={' \
-                             '%s};Server=%s;CHARSET=UTF8;Database=%s;Uid=%s' \
-                             ';Pwd=%s'
+
 
     def __init__(self):
 
+        super(AlarmDefinitionsRepository, self).__init__()
+
+
+    def get_alarm_definition_list(self, tenant_id, name, dimensions):
+
         try:
-            self.conf = cfg.CONF
-            database_name = self.conf.mysql.database_name
-            database_server = self.conf.mysql.hostname
-            database_uid = self.conf.mysql.username
-            database_pwd = self.conf.mysql.password
-            self._cnxn_string = (
-                AlarmDefinitionsRepository.database_cnxn_template % (
-                    AlarmDefinitionsRepository.database_driver,
-                    database_server, database_name, database_uid,
-                    database_pwd))
+
+            parms = [tenant_id]
+
+            select_clause = """
+                  select ad.id, ad.name, ad.description, ad.expression,
+                    ad.match_by, ad.severity, ad.actions_enabled,
+                    aaa.alarm_actions, aao.ok_actions, aau.undetermined_actions
+                  from alarm_definition as ad
+                  left join (select alarm_definition_id,
+                   group_concat(action_id) as alarm_actions
+                      from alarm_action
+                      where alarm_state = 'ALARM'
+                      group by alarm_definition_id) as aaa
+                      on aaa.alarm_definition_id = ad.id
+                  left join (select alarm_definition_id,
+                    group_concat(action_id) as ok_actions
+                      from alarm_action
+                      where alarm_state = 'OK'
+                      group by alarm_definition_id) as aao
+                      on aao.alarm_definition_id = ad.id
+                  left join (select alarm_definition_id,
+                    group_concat(action_id) as undetermined_actions
+                      from alarm_action
+                      where alarm_state = 'UNDETERMINED'
+                      group by alarm_definition_id) as aau
+                      on aau.alarm_definition_id = ad.id
+                      """
+
+            where_clause = " where ad.tenant_id = ? "
+
+            if name:
+                where_clause += " and ad.name = ? "
+                parms.append(name.encode('utf8'))
+
+            if dimensions:
+                inner_join = """ inner join sub_alarm_definition as sad
+                            on sad.alarm_definition_id = ad.id """
+
+                i = 0
+                inner_join_parms = []
+                for n, v in dimensions.iteritems():
+                    inner_join += """
+                        inner join
+                            (select distinct sub_alarm_definition_id
+                             from sub_alarm_definition_dimension
+                              where dimension_name = ? and value = ?) as sadd{}
+                        on sadd{}.sub_alarm_definition_id = sad.id
+                        """.format(i, i)
+                    inner_join_parms += [n.encode('utf8'), v.encode('utf8')]
+                    i += 1
+
+                select_clause += inner_join
+                parms = inner_join_parms + parms
+
+            query = select_clause + where_clause
+            cnxn, cursor = self._get_cnxn_cursor_tuple()
+            cursor.execute(query, parms)
+
+            rows = cursor.fetchall()
+
+            self._commit_close_cnxn(cnxn)
+
+            return rows
 
         except Exception as ex:
             LOG.exception(ex)
             raise exceptions.RepositoryException(ex)
-
-    def _get_cnxn_cursor_tuple(self):
-
-        cnxn = pyodbc.connect(self._cnxn_string)
-        cursor = cnxn.cursor()
-        return cnxn, cursor
-
-    def _commit_close_cnxn(self, cnxn):
-        cnxn.commit()
-        cnxn.close()
 
     def get_sub_alarms(self, tenant_id, alarm_definition_id):
 
