@@ -48,6 +48,24 @@ class AlarmsRepository(mysql_repository.MySQLRepository,
         super(AlarmsRepository, self).__init__()
 
     @mysql_repository.mysql_try_catch_block
+    def get_alarm_definition(self, tenant_id, alarm_id):
+
+        query = """
+            select *
+            from alarm_definition as ad
+            inner join alarm as a on a.alarm_definition_id = ad.id
+            where ad.tenant_id = %s and a.id = %s"""
+
+        alarm_definition_rows = self._execute_query(query,
+                                                    (tenant_id, alarm_id))
+
+        if not alarm_definition_rows:
+            raise exceptions.DoesNotExistException
+
+        # There should only be 1 row.
+        return alarm_definition_rows[0]
+
+    @mysql_repository.mysql_try_catch_block
     def get_alarm_metrics(self, alarm_id):
 
         parms = [alarm_id]
@@ -86,6 +104,49 @@ class AlarmsRepository(mysql_repository.MySQLRepository,
                 """
 
         return self._execute_query(query, parms)
+
+    @mysql_repository.mysql_try_catch_block
+    def update_alarm(self, tenant_id, id, state):
+
+        cnxn, cursor = self._get_cnxn_cursor_tuple()
+
+        with cnxn:
+
+            select_query = """
+                select a.state
+                from alarm as a
+                inner join alarm_definition as ad
+                  on ad.id = a.alarm_definition_id
+                where ad.tenant_id = %s and a.id = %s"""
+
+            cursor.execute(select_query, (tenant_id, id))
+
+            if cursor.rowcount < 1:
+                raise exceptions.DoesNotExistException
+
+            prev_state = cursor.fetchone()['state']
+
+            if state != prev_state:
+
+                parms = [state, tenant_id, id]
+
+                update_query = """
+                    update alarm
+                    set state = %s
+                    where alarm.id in
+                    (select distinct id
+                      from
+                        (select distinct alarm.id
+                         from alarm
+                         inner join alarm_definition
+                          on alarm_definition.id = alarm.alarm_definition_id
+                      where alarm_definition.tenant_id = %s and alarm.id = %s)
+                      as tmptable
+                    )"""
+
+                cursor.execute(update_query, parms)
+
+            return prev_state
 
     @mysql_repository.mysql_try_catch_block
     def delete_alarm(self, tenant_id, id):
