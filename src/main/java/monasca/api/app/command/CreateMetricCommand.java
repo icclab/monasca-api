@@ -114,8 +114,9 @@ public class CreateMetricCommand {
     // Note Deep hash code is used here
     result = prime * result + Arrays.deepHashCode(timeValues);
     result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
-    long temp;
-    temp = value.hashCode();
+    long temp = 0;
+    if (value != null)
+      temp = value.hashCode();
     result = prime * result + (int) (temp ^ (temp >>> 32));
     return result;
   }
