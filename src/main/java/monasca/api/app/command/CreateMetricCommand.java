@@ -40,7 +40,9 @@ public class CreateMetricCommand {
   public String value;
   public double[][] timeValues;
 
-  public CreateMetricCommand() {}
+  public CreateMetricCommand() {
+    value = "";
+  }
 
   public CreateMetricCommand(String name, @Nullable Map<String, String> dimensions,
       @Nullable Long timestamp, String value) {
@@ -114,9 +116,7 @@ public class CreateMetricCommand {
     // Note Deep hash code is used here
     result = prime * result + Arrays.deepHashCode(timeValues);
     result = prime * result + (int) (timestamp ^ (timestamp >>> 32));
-    long temp = 0;
-    if (value != null)
-      temp = value.hashCode();
+    long temp = value.hashCode();
     result = prime * result + (int) (temp ^ (temp >>> 32));
     return result;
   }
