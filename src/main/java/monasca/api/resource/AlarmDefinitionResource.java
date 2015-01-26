@@ -13,6 +13,13 @@
  */
 package monasca.api.resource;
 
+import com.google.common.base.Strings;
+
+import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.databind.JsonMappingException;
+
+import org.hibernate.validator.constraints.NotEmpty;
+
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -34,33 +41,20 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.hibernate.validator.constraints.NotEmpty;
-
-import com.codahale.metrics.annotation.Timed;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.google.common.base.Strings;
 import monasca.api.app.AlarmDefinitionService;
 import monasca.api.app.command.CreateAlarmDefinitionCommand;
 import monasca.api.app.command.UpdateAlarmDefinitionCommand;
 import monasca.api.app.validation.AlarmValidation;
 import monasca.api.app.validation.Validation;
-import monasca.common.model.alarm.AlarmExpression;
-import monasca.common.model.alarm.AlarmState;
 import monasca.api.domain.model.alarmdefinition.AlarmDefinition;
 import monasca.api.domain.model.alarmdefinition.AlarmDefinitionRepository;
 import monasca.api.resource.annotation.PATCH;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiOperation;
-import com.wordnik.swagger.annotations.ApiParam;
-import com.wordnik.swagger.annotations.ApiResponse;
-import com.wordnik.swagger.annotations.ApiResponses;
+import monasca.common.model.alarm.AlarmExpression;
 
 /**
  * Alarm definition resource implementation.
  */
 @Path(AlarmDefinitionResource.ALARM_DEFINITIONS_PATH)
-@Api(value = AlarmDefinitionResource.ALARM_DEFINITIONS_PATH,
-    description = "Operations for working with alarm definitions")
 public class AlarmDefinitionResource {
   private final AlarmDefinitionService service;
   private final AlarmDefinitionRepository repo;
@@ -77,7 +71,6 @@ public class AlarmDefinitionResource {
   @Timed
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Create alarm definition", response = AlarmDefinition.class)
   public Response create(@Context UriInfo uriInfo, @HeaderParam("X-Tenant-Id") String tenantId,
       @Valid CreateAlarmDefinitionCommand command) {
     command.validate();
@@ -92,26 +85,23 @@ public class AlarmDefinitionResource {
   @GET
   @Timed
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "List alarm definitions", response = AlarmDefinition.class,
-      responseContainer = "List")
-  public List<AlarmDefinition> list(@Context UriInfo uriInfo,
+  public Object list(@Context UriInfo uriInfo,
       @HeaderParam("X-Tenant-Id") String tenantId, @QueryParam("name") String name,
-      @QueryParam("dimensions") String dimensionsStr) {
+      @QueryParam("dimensions") String dimensionsStr,
+      @QueryParam("offset") String offset) {
     Map<String, String> dimensions =
         Strings.isNullOrEmpty(dimensionsStr) ? null : Validation
             .parseAndValidateDimensions(dimensionsStr);
-    return Links.hydrate(repo.find(tenantId, name, dimensions), uriInfo);
+
+    return Links.paginate(offset, Links.hydrate(repo.find(tenantId, name, dimensions, offset), uriInfo), uriInfo);
   }
 
   @GET
   @Timed
   @Path("/{alarm_definition_id}")
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Get alarm definition", response = AlarmDefinition.class)
-  @ApiResponses(value = {@ApiResponse(code = 400, message = "Invalid ID supplied"),
-      @ApiResponse(code = 404, message = "Alarm definition not found")})
   public AlarmDefinition get(
-      @ApiParam(value = "ID of alarm definition to fetch", required = true) @Context UriInfo uriInfo,
+      @Context UriInfo uriInfo,
       @HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("alarm_definition_id") String alarmDefinitionId) {
     return Links.hydrate(repo.findById(tenantId, alarmDefinitionId), uriInfo, true);
@@ -122,7 +112,6 @@ public class AlarmDefinitionResource {
   @Path("/{alarm_definition_id}")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Update alarm definition", response = AlarmDefinition.class)
   public AlarmDefinition update(@Context UriInfo uriInfo,
       @HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("alarm_definition_id") String alarmDefinitionId,
@@ -148,9 +137,6 @@ public class AlarmDefinitionResource {
     String severity = (String) fields.get("severity");
     String expression = (String) fields.get("expression");
     List<String> matchBy = (List<String>) fields.get("match_by");
-    String stateStr = (String) fields.get("state");
-    AlarmState state =
-        stateStr == null ? null : Validation.parseAndValidate(AlarmState.class, stateStr);
     Boolean enabled = (Boolean) fields.get("actions_enabled");
     List<String> alarmActions = (List<String>) fields.get("alarm_actions");
     List<String> okActions = (List<String>) fields.get("ok_actions");
@@ -161,14 +147,13 @@ public class AlarmDefinitionResource {
         expression == null ? null : AlarmValidation.validateNormalizeAndGet(expression);
 
     return Links.hydrate(service.patch(tenantId, alarmDefinitionId, name, description, severity,
-        expression, alarmExpression, matchBy, state, enabled, alarmActions, okActions,
+        expression, alarmExpression, matchBy, enabled, alarmActions, okActions,
         undeterminedActions), uriInfo, true);
   }
 
   @DELETE
   @Timed
   @Path("/{alarm_definition_id}")
-  @ApiOperation(value = "Delete alarm definition")
   public void delete(@HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("alarm_definition_id") String alarmDefinitionId) {
     service.delete(tenantId, alarmDefinitionId);

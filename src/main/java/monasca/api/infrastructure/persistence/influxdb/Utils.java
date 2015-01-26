@@ -24,6 +24,8 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import monasca.api.domain.model.common.Paged;
+
 final class Utils {
 
   // Serie names match this pattern.
@@ -78,20 +80,21 @@ final class Utils {
 
   }
 
-  static String buildSerieNameRegex(final String tenantId, final String name,
+  static String buildSerieNameRegex(final String tenantId, String region, final String name,
                                     final Map<String, String> dimensions) throws Exception {
+
     final StringBuilder regex = new StringBuilder("^");
+
+    regex.append(urlEncodeUTF8(tenantId));
+    regex.append("\\?");
+    regex.append(urlEncodeUTF8(region));
 
     // Name is optional.
     if (name != null) {
+      regex.append("&");
       regex.append(urlEncodeUTF8(name));
-    } else {
-      regex.append(".+");
+      regex.append("(&|$)");
     }
-
-    // Tenant ID will always be included in the regex.
-    regex.append("\\?");
-    regex.append(urlEncodeUTF8(tenantId));
 
     // Dimensions are optional.
     if (dimensions != null && !dimensions.isEmpty()) {
@@ -100,10 +103,11 @@ final class Utils {
       final TreeSet<Dimension> dimSortedSet = buildSortedDimSet(dimensions);
 
       for (final Dimension dim : dimSortedSet) {
-        regex.append(".*&");
+        regex.append("(.*&)*");
         regex.append(urlEncodeUTF8(dim.name));
         regex.append("=");
         regex.append(urlEncodeUTF8(dim.value));
+        regex.append("(&|$)");
       }
     }
     return regex.toString();
@@ -161,17 +165,17 @@ final class Utils {
 
       this.serieName = serieName;
 
-      this.metricName = urlDecodeUTF8(serieName.substring(0, serieName.indexOf('?')));
+      this.tenantId = urlDecodeUTF8(serieName.substring(0, serieName.indexOf('?')));
       String rest = serieName.substring(serieName.indexOf('?') + 1);
 
-      this.tenantId = urlDecodeUTF8(rest.substring(0, rest.indexOf('&')));
+      this.region = urlDecodeUTF8(rest.substring(0, rest.indexOf('&')));
       rest = rest.substring(rest.indexOf('&') + 1);
 
       if (rest.contains("&")) {
-        this.region = urlDecodeUTF8(rest.substring(0, rest.indexOf('&')));
+        this.metricName = urlDecodeUTF8(rest.substring(0, rest.indexOf('&')));
         rest = rest.substring(rest.indexOf('&') + 1);
       } else {
-        this.region = urlDecodeUTF8(rest);
+        this.metricName = urlDecodeUTF8(rest);
         rest = null;
       }
 
@@ -233,5 +237,21 @@ final class Utils {
     return m.matches();
   }
 
+  public static  String buildOffsetPart(String offset) {
+
+    if (offset != null) {
+
+      if (!offset.isEmpty()) {
+
+        return " and time < " + offset + "ms limit " + Paged.LIMIT;
+      } else {
+        return " limit " + Paged.LIMIT;
+      }
+
+    } else {
+      return "";
+    }
+
+  }
 }
 

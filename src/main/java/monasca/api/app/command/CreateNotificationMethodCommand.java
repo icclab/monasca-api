@@ -67,7 +67,7 @@ public class CreateNotificationMethodCommand {
   public void validate() {
     switch (type) {
       case EMAIL : {
-        if (!EmailValidator.getInstance().isValid(address))
+        if (!EmailValidator.getInstance(true).isValid(address))
           throw Exceptions.unprocessableEntity("Address %s is not of correct format", address);
       }; break;
       case WEBHOOK : {
@@ -75,6 +75,9 @@ public class CreateNotificationMethodCommand {
         UrlValidator urlValidator = new UrlValidator(schemes, UrlValidator.ALLOW_LOCAL_URLS | UrlValidator.ALLOW_2_SLASHES);
         if (!urlValidator.isValid(address))
           throw Exceptions.unprocessableEntity("Address %s is not of correct format", address);
+      }; break;
+      case PAGERDUTY : {
+        // No known validation for PAGERDUTY type at this time
       }; break;
     }
   }

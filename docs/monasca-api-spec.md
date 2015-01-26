@@ -19,6 +19,7 @@ Document Version: v2.0
       - [Simple Example](#simple-example)
       - [More Complex Example](#more-complex-example)
       - [Compound alarm example](#compound-alarm-example)
+    - [Changing Alarm Definitions](#changing-alarm-definitions)
 - [Common Request Headers](#common-request-headers)
   - [Common Http Request Headers](#common-http-request-headers)
   - [Non-standard request headers](#non-standard-request-headers)
@@ -357,7 +358,7 @@ Alarm 2 - Metrics: cpu.idle_perc{service=monitoring,hostname=devstack}
 
 Alarm Definition 1 is evaluating the status of the monitoring service as a whole, while Alarm Definition 2 evaluates each system in the service.
 
-Now if another system is configured into the monitoring service, then its cpu.idle_perc metric will be added to the Alarm for Alarm Definition 1 and a new Alarm will be created for Alarm Definition 2, all without any user intervention. The system will be monitored without requiring the user to explictly add alarms for the new system as other monitoring systems require.
+Now if another system is configured into the monitoring service, then its cpu.idle_perc metric will be added to the Alarm for Alarm Definition 1 and a new Alarm will be created for Alarm Definition 2, all without any user intervention. The system will be monitored without requiring the user to explicitly add alarms for the new system as other monitoring systems require.
 
 If an Alarm Definition expression has multiple subexpressions, for example, `avg(cpu.idle_perc{service=monitoring}) < 10 or avg(cpu.user_perc{service=monitoring}) > 60` and a match_by value set, then the metrics for both subexpressions must have the same value for the dimension specified in match_by. For example, assume this Alarm Definition:
 
@@ -461,7 +462,7 @@ Each subexpression is made up of several parts with a couple of options:
 	| '(' expression ')'     
 
 ````
-Period must an interger multiple of 60.  The default period is 60 seconds.
+Period must be an integer multiple of 60.  The default period is 60 seconds.
 
 The logical_operators are: `and` (also `&&`), `or` (also `||`).
 
@@ -517,7 +518,7 @@ where 'avg' is the arithmetic average. Note, threshold values are always in the 
 
 
 #### Simple Example
-In this example the metric uniquely identified with the name=cpu.system_perc and dimension hostname=host.domain.com is compared to the threshold 95.
+In this example the metric uniquely identified with the name `cpu.system_perc` and dimension `hostname=host.domain.com` is compared to the threshold 95.
 
 ```
 cpu.system_perc{hostname=host.domain.com} > 95
@@ -548,6 +549,12 @@ In this example a compound alarm expression is evaluated involving two threshold
 ```
 avg(cpu.system_perc{hostname=hostname.domain.com}) > 90 or avg(disk_read_ops{hostname=hostname.domain.com, device=vda}, 120) > 1000
 ```
+
+### Changing Alarm Definitions
+
+Once an Alarm Definition has been created, the value for match_by and any metrics in the expression cannot be changed. This is because those fields control the metrics used to create Alarms and Alarms may already have been created. The function, operator, period, periods and any boolean operators can change, but not the metrics in subexpressions or the number of subexpressions.  All other fields in an Alarm Definition can be changed.
+
+The only option to change metrics or match_by is to delete the existing Alarm Definition and create a new one. Deleting an Alarm Definition will delete all Alarms associated with it.
 
 # Common Request Headers
 This section documents the common request headers that are used in requests.
@@ -850,7 +857,6 @@ None.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
-* limit (integer, optional) - The maximum number of metrics to return.
 
 #### Request Body
 None.
@@ -1031,7 +1037,7 @@ None.
 None.
 
 #### Request Body
-* name (string(250), required) - A descriptive name of the notifcation method.
+* name (string(250), required) - A descriptive name of the notification method.
 * type (string(100), required) - The type of notification method (`EMAIL` or `WEBHOOK` ).
 * address (string(100), required) - The email/url address to notify.
 
@@ -1333,7 +1339,7 @@ Consists of an alarm definition. An alarm has the following properties:
 * name (string(255), required) - A unique name of the alarm. Note, the name must be unique.
 * description (string(255), optional) -  A description of an alarm.
 * expression (string, required) - An alarm expression.
-* match_by ([string], optional) - The metric dimensions to match to the alarm dimensions.
+* match_by ([string], optional) - The metric dimensions to use to create unique alarms
 * severity (string, optional) - Severity of an alarm. Must be either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`. Default is `LOW`.
 * alarm_actions ([string(50)], optional) - Array of notification method IDs that are invoked when the alarm transitions to the `ALARM` state.
 * ok_actions ([string(50)], optional) - Array of notification method IDs that are invoked when the alarm transitions to the `OK` state.
@@ -1468,7 +1474,7 @@ Returns a JSON array of alarm objects with the following fields:
 * description (string) - Description of alarm definition.
 * expression (string) - The alarm definition expression.
 * expression_data (JSON object) - The alarm definition expression as a JSON object.
-* match_by ([string]) - The metric dimensions to match to the alarm dimensions
+* match_by ([string]) - The metric dimensions to use to create unique alarms
 * severity (string) - The severity of an alarm definition. Either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * actions_enabled (boolean) - If true actions for all alarms related to this definition are enabled.
 * alarm_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `ALARM` state.
@@ -1550,7 +1556,7 @@ Returns a JSON alarm object with the following fields:
 * description (string) - Description of alarm definition.
 * expression (string) - The alarm definition expression.
 * expression_data (JSON object) - The alarm definition expression as a JSON object.
-* match_by ([string]) - The metric dimensions to match to the alarm dimensions
+* match_by ([string]) - The metric dimensions to use to create unique alarms
 * severity (string) - The severity of an alarm definition. Either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * actions_enabled (boolean) - If true actions for all alarms related to this definition are enabled.
 * alarm_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `ALARM` state.
@@ -1621,13 +1627,15 @@ Consists of an alarm definition. An alarm has the following properties:
 * name (string(255), required) - A name of the alarm definition.
 * description (string(255), optional) -  A description of an alarm definition.
 * expression (string, required) - An alarm expression.
-* match_by ([string], optional) - The metric dimensions to match to the alarm dimensions
+* match_by ([string], optional) - The metric dimensions to use to create unique alarms. If specified, this MUST be the same as the existing value for match_by
 * severity (string, optional) - Severity of an alarm definition. Must be either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * alarm_actions ([string(50)], optional) 
 * ok_actions ([string(50)], optional)
 * undetermined_actions ([string(50)], optional)
 
 If optional parameters are not specified they will be reset to their default state.
+
+Only the parameters that are specified will be updated. See Changing Alarm Definitions for restrictions on changing expression and match_by.
 
 #### Request Examples
 ```
@@ -1669,7 +1677,7 @@ Returns a JSON alarm object with the following parameters:
 * description (string) - Description of alarm definition.
 * expression (string) - The alarm definition expression.
 * expression_data (JSON object) - The alarm definition expression as a JSON object.
-* match_by ([string]) - The metric dimensions to match to the alarm dimensions
+* match_by ([string]) - The metric dimensions to use to create unique alarms
 * severity (string) - The severity of an alarm definition. Either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * actions_enabled (boolean) - If true actions for all alarms related to this definition are enabled.
 * alarm_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `ALARM` state.
@@ -1738,14 +1746,14 @@ Consists of an alarm with the following properties:
 * name (string) - Name of alarm definition.
 * description (string) - Description of alarm definition.
 * expression (string) - The alarm definition expression.
-* match_by ([string], optional) - The metric dimensions to match to the alarm dimensions
+* match_by ([string], optional) - The metric dimensions to use to create unique alarms. If specified, this MUST be the same as the existing value for match_by
 * severity (string) - The severity of an alarm definition. Either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * actions_enabled (boolean) - If true actions for all alarms related to this definition are enabled.
 * alarm_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `ALARM` state.
 * ok_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `OK` state.
 * undetermined_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `UNDETERMINED` state.
 
-Only the parameters that are specified will be updated.
+Only the parameters that are specified will be updated. See Changing Alarm Definitions for restrictions on changing expression and match_by.
 
 #### Request Examples
 ```
@@ -1788,7 +1796,7 @@ Returns a JSON alarm definition object with the following fields:
 * description (string) - Description of alarm definition.
 * expression (string) - The alarm definition expression.
 * expression_data (JSON object) - The alarm definition expression as a JSON object.
-* match_by ([string]) - The metric dimensions to match to the alarm dimensions
+* match_by ([string]) - The metric dimensions to use to create unique alarms
 * severity (string) - The severity of an alarm definition. Either `LOW`, `MEDIUM`, `HIGH` or `CRITICAL`.
 * actions_enabled (boolean) - If true actions for all alarms related to this definition are enabled.
 * alarm_actions ([string]) - Array of notification method IDs that are invoked when the alarms for this definition transition to the `ALARM` state.

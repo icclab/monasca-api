@@ -13,6 +13,8 @@
  */
 package monasca.api.resource;
 
+import com.codahale.metrics.annotation.Timed;
+
 import java.net.URI;
 import java.util.List;
 
@@ -27,24 +29,20 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import com.codahale.metrics.annotation.Timed;
 import monasca.api.app.command.CreateNotificationMethodCommand;
 import monasca.api.domain.model.notificationmethod.NotificationMethod;
 import monasca.api.domain.model.notificationmethod.NotificationMethodRepository;
-import com.wordnik.swagger.annotations.Api;
-import com.wordnik.swagger.annotations.ApiOperation;
 
 /**
  * Notification Method resource implementation.
  */
 @Path("/v2.0/notification-methods")
-@Api(value = "/v2.0/notification-methods",
-    description = "Operations for working with notification methods")
 public class NotificationMethodResource {
   private final NotificationMethodRepository repo;
 
@@ -57,7 +55,6 @@ public class NotificationMethodResource {
   @Timed
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Create notification method", response = NotificationMethod.class)
   public Response create(@Context UriInfo uriInfo, @HeaderParam("X-Tenant-Id") String tenantId,
       @Valid CreateNotificationMethodCommand command) {
     command.validate();
@@ -72,18 +69,17 @@ public class NotificationMethodResource {
   @GET
   @Timed
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "List notification methods", response = NotificationMethod.class,
-      responseContainer = "List")
-  public List<NotificationMethod> list(@Context UriInfo uriInfo,
-      @HeaderParam("X-Tenant-Id") String tenantId) {
-    return Links.hydrate(repo.find(tenantId), uriInfo);
+  public Object list(@Context UriInfo uriInfo, @HeaderParam("X-Tenant-Id") String tenantId,
+                     @QueryParam("offset") String offset) {
+
+    return Links.paginate(offset, Links.hydrate(repo.find(tenantId, offset), uriInfo), uriInfo);
+
   }
 
   @GET
   @Timed
   @Path("/{notification_method_id}")
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Get notification method", response = NotificationMethod.class)
   public NotificationMethod get(@Context UriInfo uriInfo,
       @HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("notification_method_id") String notificationMethodId) {
@@ -95,7 +91,6 @@ public class NotificationMethodResource {
   @Path("/{notification_method_id}")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  @ApiOperation(value = "Update notification method", response = NotificationMethod.class)
   public NotificationMethod update(@Context UriInfo uriInfo,
       @HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("notification_method_id") String notificationMethodId,
@@ -110,7 +105,6 @@ public class NotificationMethodResource {
   @DELETE
   @Timed
   @Path("/{notification_method_id}")
-  @ApiOperation(value = "Delete notification method")
   public void delete(@HeaderParam("X-Tenant-Id") String tenantId,
       @PathParam("notification_method_id") String notificationMethodId) {
     repo.deleteById(tenantId, notificationMethodId);

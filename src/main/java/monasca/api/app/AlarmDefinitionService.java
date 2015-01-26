@@ -41,7 +41,6 @@ import monasca.common.model.event.AlarmDefinitionDeletedEvent;
 import monasca.common.model.event.AlarmDefinitionUpdatedEvent;
 import monasca.common.model.event.AlarmDeletedEvent;
 import monasca.common.model.alarm.AlarmExpression;
-import monasca.common.model.alarm.AlarmState;
 import monasca.common.model.alarm.AlarmSubExpression;
 import monasca.common.model.metric.MetricDefinition;
 import monasca.api.domain.exception.EntityExistsException;
@@ -66,6 +65,7 @@ public class AlarmDefinitionService {
   private final AlarmDefinitionRepository repo;
   private final AlarmRepository alarmRepo;
   private final NotificationMethodRepository notificationMethodRepo;
+  long eventCount;
 
   @Inject
   public AlarmDefinitionService(MonApiConfiguration config, Producer<String, String> producer,
@@ -124,7 +124,7 @@ public class AlarmDefinitionService {
       String event =
           Serialization.toJson(new AlarmDefinitionCreatedEvent(tenantId, alarmDefId, name,
               description, expression, subAlarms, matchBy));
-      producer.send(new KeyedMessage<>(config.eventsTopic, tenantId, event));
+      producer.send(new KeyedMessage<>(config.eventsTopic, String.valueOf(eventCount++), event));
 
       return alarm;
     } catch (Exception e) {
@@ -149,18 +149,16 @@ public class AlarmDefinitionService {
 
     // Have to get information about the Alarms before they are deleted. They will be deleted
     // by the database as a cascade delete from the Alarm Definition delete
-    final List<Alarm> alarms = alarmRepo.find(tenantId, alarmDefId, null, null, null);
-    final Map<String, Map<String, AlarmSubExpression>> alarmSubExpressions = new HashMap<>(alarms.size());
-    for (final Alarm alarm : alarms) {
-      alarmSubExpressions.put(alarm.getId(), alarmRepo.findAlarmSubExpressions(alarm.getId()));
-    }
+    final List<Alarm> alarms = alarmRepo.find(tenantId, alarmDefId, null, null, null, null);
+    final Map<String, Map<String, AlarmSubExpression>> alarmSubExpressions =
+                                          alarmRepo.findAlarmSubExpressionsForAlarmDefinition(alarmDefId);
 
     repo.deleteById(tenantId, alarmDefId);
 
     // Notify interested parties of alarm definition deletion
     String event =
         Serialization.toJson(new AlarmDefinitionDeletedEvent(alarmDefId, subAlarmMetricDefs));
-    producer.send(new KeyedMessage<>(config.eventsTopic, tenantId, event));
+    producer.send(new KeyedMessage<>(config.eventsTopic, String.valueOf(eventCount++), event));
 
     // Notify about the Deletion of the Alarms second because that is the order that thresh
     // wants it so Alarms don't get recreated
@@ -168,7 +166,7 @@ public class AlarmDefinitionService {
       String alarmDeletedEvent =
           Serialization.toJson(new AlarmDeletedEvent(tenantId, alarm.getId(), alarm.getMetrics(),
               alarmDefId, alarmSubExpressions.get(alarm.getId())));
-      producer.send(new KeyedMessage<>(config.eventsTopic, tenantId, alarmDeletedEvent));
+      producer.send(new KeyedMessage<>(config.eventsTopic, String.valueOf(eventCount++), alarmDeletedEvent));
     }
   }
 
@@ -181,15 +179,48 @@ public class AlarmDefinitionService {
    */
   public AlarmDefinition update(String tenantId, String alarmDefId,
       AlarmExpression alarmExpression, UpdateAlarmDefinitionCommand command) {
-    assertAlarmDefinitionExists(tenantId, alarmDefId, command.alarmActions, command.okActions,
+    final AlarmDefinition oldAlarmDefinition = assertAlarmDefinitionExists(tenantId, alarmDefId, command.alarmActions, command.okActions,
         command.undeterminedActions);
+    final SubExpressions subExpressions =
+        subExpressionsFor(repo.findSubExpressions(alarmDefId), alarmExpression);
+    validateChangesAllowed(command.matchBy, oldAlarmDefinition, subExpressions);
     updateInternal(tenantId, alarmDefId, false, command.name, command.description,
         command.expression, command.matchBy, command.severity, alarmExpression,
         command.actionsEnabled, command.alarmActions, command.okActions,
-        command.undeterminedActions);
+        command.undeterminedActions, subExpressions);
     return new AlarmDefinition(alarmDefId, command.name, command.description, command.severity,
         command.expression, command.matchBy, command.actionsEnabled, command.alarmActions,
         command.okActions, command.undeterminedActions);
+  }
+
+  /**
+   * Don't allow changes that would cause existing Alarms for this AlarmDefinition to be invalidated.
+   *
+   * matchBy can't change and the expression can't change the metrics used or number of subexpressions
+   */
+  private void validateChangesAllowed(final List<String> newMatchBy,
+      final AlarmDefinition oldAlarmDefinition, final SubExpressions subExpressions) {
+    final boolean matchBySame;
+    if (oldAlarmDefinition.getMatchBy() == null || oldAlarmDefinition.getMatchBy().isEmpty()) {
+      matchBySame = newMatchBy == null || newMatchBy.isEmpty();
+    }
+    else {
+      matchBySame = oldAlarmDefinition.getMatchBy().equals(newMatchBy);
+    }
+    if (!matchBySame) {
+      throw monasca.api.resource.exception.Exceptions.unprocessableEntity("match_by must not change");
+    }
+    if (!subExpressions.oldAlarmSubExpressions.isEmpty() || !subExpressions.newAlarmSubExpressions.isEmpty()) {
+      final int newCount = subExpressions.newAlarmSubExpressions.size() +
+                           subExpressions.changedSubExpressions.size() +
+                           subExpressions.unchangedSubExpressions.size();
+      if (newCount != AlarmExpression.of(oldAlarmDefinition.getExpression()).getSubExpressions().size()) {
+        throw monasca.api.resource.exception.Exceptions.unprocessableEntity("number of subexpressions must not change");
+      }
+      else {
+        throw monasca.api.resource.exception.Exceptions.unprocessableEntity("metrics in subexpression must not change");
+      }
+    }
   }
 
   /**
@@ -201,32 +232,35 @@ public class AlarmDefinitionService {
    */
   public AlarmDefinition patch(String tenantId, String alarmDefId, String name, String description,
       String severity, String expression, AlarmExpression alarmExpression, List<String> matchBy,
-      AlarmState state, Boolean enabled, List<String> alarmActions, List<String> okActions,
+      Boolean enabled, List<String> alarmActions, List<String> okActions,
       List<String> undeterminedActions) {
-    AlarmDefinition alarm =
+    AlarmDefinition oldAlarmDefinition =
         assertAlarmDefinitionExists(tenantId, alarmDefId, alarmActions, okActions,
             undeterminedActions);
-    name = name == null ? alarm.getName() : name;
-    description = description == null ? alarm.getDescription() : description;
-    expression = expression == null ? alarm.getExpression() : expression;
-    severity = severity == null ? alarm.getSeverity() : severity;
+    name = name == null ? oldAlarmDefinition.getName() : name;
+    description = description == null ? oldAlarmDefinition.getDescription() : description;
+    expression = expression == null ? oldAlarmDefinition.getExpression() : expression;
+    severity = severity == null ? oldAlarmDefinition.getSeverity() : severity;
     alarmExpression = alarmExpression == null ? AlarmExpression.of(expression) : alarmExpression;
-    enabled = enabled == null ? alarm.isActionsEnabled() : enabled;
+    enabled = enabled == null ? oldAlarmDefinition.isActionsEnabled() : enabled;
+    matchBy = matchBy == null ? oldAlarmDefinition.getMatchBy() : matchBy;
 
+    final SubExpressions subExpressions =
+        subExpressionsFor(repo.findSubExpressions(alarmDefId), alarmExpression);
+    validateChangesAllowed(matchBy, oldAlarmDefinition, subExpressions);
     updateInternal(tenantId, alarmDefId, true, name, description, expression, matchBy, severity,
-        alarmExpression, enabled, alarmActions, okActions, undeterminedActions);
+        alarmExpression, enabled, alarmActions, okActions, undeterminedActions, subExpressions);
 
     return new AlarmDefinition(alarmDefId, name, description, severity, expression, matchBy,
-        enabled, alarmActions == null ? alarm.getAlarmActions() : alarmActions,
-        okActions == null ? alarm.getOkActions() : okActions,
-        undeterminedActions == null ? alarm.getUndeterminedActions() : undeterminedActions);
+        enabled, alarmActions == null ? oldAlarmDefinition.getAlarmActions() : alarmActions,
+        okActions == null ? oldAlarmDefinition.getOkActions() : okActions,
+        undeterminedActions == null ? oldAlarmDefinition.getUndeterminedActions() : undeterminedActions);
   }
 
   private void updateInternal(String tenantId, String alarmDefId, boolean patch, String name,
       String description, String expression, List<String> matchBy, String severity,
       AlarmExpression alarmExpression, Boolean enabled, List<String> alarmActions,
-      List<String> okActions, List<String> undeterminedActions) {
-    SubExpressions subExpressions = subExpressionsFor(alarmDefId, alarmExpression);
+      List<String> okActions, List<String> undeterminedActions, SubExpressions subExpressions) {
 
     try {
       LOG.debug("Updating alarm definition {} for tenant {}", name, tenantId);
@@ -241,7 +275,7 @@ public class AlarmDefinitionService {
               description, expression, matchBy, enabled, severity, subExpressions.oldAlarmSubExpressions,
               subExpressions.changedSubExpressions, subExpressions.unchangedSubExpressions,
               subExpressions.newAlarmSubExpressions));
-      producer.send(new KeyedMessage<>(config.eventsTopic, tenantId, event));
+      producer.send(new KeyedMessage<>(config.eventsTopic, String.valueOf(eventCount++), event));
     } catch (Exception e) {
       throw Exceptions.uncheck(e, "Error updating alarm definition for project / tenant %s",
           tenantId);
@@ -252,9 +286,10 @@ public class AlarmDefinitionService {
    * Returns an entry containing Maps of old, changed, and new sub expressions by comparing the
    * {@code alarmExpression} to the existing sub expressions for the {@code alarmDefId}.
    */
-  SubExpressions subExpressionsFor(String alarmDefId, AlarmExpression alarmExpression) {
+  SubExpressions subExpressionsFor(final Map<String, AlarmSubExpression> initialSubExpressions,
+      AlarmExpression alarmExpression) {
     BiMap<String, AlarmSubExpression> oldExpressions =
-        HashBiMap.create(repo.findSubExpressions(alarmDefId));
+        HashBiMap.create(initialSubExpressions);
     Set<AlarmSubExpression> oldSet = oldExpressions.inverse().keySet();
     Set<AlarmSubExpression> newSet = new HashSet<>(alarmExpression.getSubExpressions());
 
@@ -302,13 +337,11 @@ public class AlarmDefinitionService {
   }
 
   /**
-   * Returns whether all of the fields of {@code a} and {@code b} are the same except the operator
-   * and threshold.
+   * Returns whether all of the metrics of {@code a} and {@code b} are the same. The Threshold
+   * Engine can handle any other type of change to the expression
    */
   private boolean sameKeyFields(AlarmSubExpression a, AlarmSubExpression b) {
-    return a.getMetricDefinition().equals(b.getMetricDefinition())
-        && a.getFunction().equals(b.getFunction()) && a.getPeriod() == b.getPeriod()
-        && a.getPeriods() == b.getPeriods();
+    return a.getMetricDefinition().equals(b.getMetricDefinition());
   }
 
   /**
