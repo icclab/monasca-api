@@ -6,13 +6,15 @@ Document Version: v2.0
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](http://doctoc.herokuapp.com/)*
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
 - [Overview](#overview)
   - [Metric Name and Dimensions](#metric-name-and-dimensions)
     - [Name](#name)
     - [Dimensions](#dimensions)
     - [Text Representation](#text-representation)
+  - [Measurement](#measurement)
+    - [Value Meta](#value-meta)
   - [Alarm Definitions and Alarms](#alarm-definitions-and-alarms)
   - [Alarm Definition Expressions](#alarm-definition-expressions)
     - [Syntax](#syntax)
@@ -56,6 +58,7 @@ Document Version: v2.0
       - [Request Body](#request-body-2)
       - [Request Examples](#request-examples-2)
         - [Single metric](#single-metric)
+        - [Single metric with value_meta](#single-metric-with-value_meta)
         - [Array of metrics](#array-of-metrics)
     - [Response](#response-2)
       - [Status Code](#status-code)
@@ -312,7 +315,7 @@ Before using the API, you must first get a valid auth token from Keystone. All A
 A metric is uniquely identified by a name and set of dimensions.
 
 ### Name
-Defines the name of a metric. A name is of type string(100).
+Defines the name of a metric. A name is of type string(255).
 
 ### Dimensions
 A dictionary of (key, value) pairs. The key and value are of type string(255). The first character in the dimension is restricted to the following: `a-z A-Z 0-9 _ / \ $`. 
@@ -320,6 +323,17 @@ However, the next characters may be any character except for the following: `; }
 
 ### Text Representation
 In this document, metrics will be represented in the form `name{name=value,name=value}` where name is the metric name and the name=value pairs in the curly braces are the dimensions. For example, `cpu.idle_perc{service=monitoring,hostname=mini-mon}` represents a metric with the name "cpu.idle_perc" and the dimensions "service=monitoring" and "hostname=mini-mon".
+
+## Measurement
+A measurement is a value with a timestamp for a specific Metric. The value is represented by a double, e.g. 42.0 or 42.42.
+
+### Value Meta
+Optionally, a measurement may also contain extra data about the value which is known as value meta. Value meta is a set of name/value pairs that add textual data to the value of the measurement.  The value meta will be returned from the API when the measurement is read. Only measurements that were written with value meta will have the key value pairs when read from the API. The value meta is ignored when computing statistics such as average on measurements.
+
+For an example of how value meta is used, imagine this metric: http_status{url: http://localhost:8080/healthcheck, hostname=devstack, service=object-storage}.  The measurements for this metric have a value of either 1 or 0 depending if the status check succeeded. If the check fails, it would be helpful to have the actual http status code and error message if possible. So instead of just a value, the measurement will be something like:
+{Timestamp=now(), value=1, value_meta{http_rc=500, error=“Error accessing MySQL”}}
+
+Up to 16 separate key/value pairs of value meta are allowed per measurement. The keys are required and are trimmed of leading and trailing whitespace and have a maximum length of 255 characters. The value is a string and must not be null or empty and has a maximum length of 2048 characters. Whitespace is not trimmed from the values.
 
 ## Alarm Definitions and Alarms
 
@@ -562,7 +576,7 @@ This section documents the common request headers that are used in requests.
 ## Common Http Request Headers
 The standard Http request headers that are used in requests.
 
-* Content-Type - The Internet media type of the request body. Used with POST and PUT requests. Must be `application/json` or `application/json-patch+json`.
+* Content-Type - The Internet media type of the request body. Used with POST and PUT requests. Must be `application/json`.
 * Accept - Internet media types that are acceptable in the response. Must be application/json.
 * X-Requested-With (optional) - Which headers are requested to be allowed. Filled in by browser as part of the CORS protocol.
 * Origin (optional) - The origin of page that is requesting cross origin access. Filled in by browser as part of the CORS protocol.
@@ -619,23 +633,26 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of supported versions.
+Returns a JSON object with an 'elements' array of supported versions.
 
 #### Response Examples
 ```
-[  
-   {  
-      "id":"v2.0",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0"
-         }
-      ],
-      "status":"CURRENT",
-      "updated":"2014-07-18T03:25:02.423Z"
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "v2.0",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.10.4:8080/v2.0"
+                }
+            ],
+            "status": "CURRENT",
+            "updated": "2014-07-18T03:25:02.423Z"
+        }
+    ]
+}
 ```
 ___
 
@@ -710,10 +727,11 @@ None.
 #### Request Body
 Consists of a single metric object or an array of metric objects. A metric has the following properties:
 
-* name (string(100), required) - The name of the metric.
+* name (string(255), required) - The name of the metric.
 * dimensions ({string(255): string(255)}, optional) - A dictionary consisting of (key, value) pairs used to uniquely identify a metric.
-* timestamp (string, required) - The timestamp in seconds from the Epoch.
+* timestamp (string, required) - The timestamp in milliseconds from the Epoch.
 * value (float, required) - Value of the metric. Values with base-10 exponents greater than 126 or less than -130 are truncated.
+* value_meta ({string(255): string(2048)}, optional) - A dictionary consisting of (key, value) pairs used to add information about the value.
 
 The name and dimensions are used to uniquely identify a metric.
 
@@ -729,14 +747,39 @@ Content-Type: application/json
 X-Auth-Token: 27feed73a0ce4138934e30d619b415b0
 Cache-Control: no-cache
 
-{  
+{
    "name":"name1",
-   "dimensions":{  
+   "dimensions":{
       "key1":"value1",
       "key2":"value2"
    },
    "timestamp":1405630174,
    "value":1.0
+}
+```
+
+##### Single metric with value_meta
+POST a single metric with value_meta.
+
+```
+POST /v2.0/metrics HTTP/1.1
+Host: 192.168.10.4:8080
+Content-Type: application/json
+X-Auth-Token: 27feed73a0ce4138934e30d619b415b0
+Cache-Control: no-cache
+
+{
+   "name":"name1",
+   "dimensions":{
+      "key1":"value1",
+      "key2":"value2"
+   },
+   "timestamp":1405630174,
+   "value":1.0,
+   "value_meta":{
+      "key1":"value1",
+      "key2":"value2"
+   }
 }
 ```
 
@@ -767,7 +810,11 @@ Cache-Control: no-cache
          "key2":"value2"
       },
       "timestamp":1405630174,
-      "value":2.0
+      "value":2.0,
+      "value_meta":{
+         "key1":"value1",
+         "key2":"value2"
+      }
    }
 ]
 ```
@@ -793,7 +840,7 @@ Get metrics
 None.
 
 #### Query Parameters
-* name (string(100), optional) - A metric name to filter metrics by.
+* name (string(255), optional) - A metric name to filter metrics by.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 
 #### Request Body
@@ -813,27 +860,31 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of metric definition objects with the following fields:
+Returns a JSON object with an 'elements' array of metric definition objects with the following fields:
 
 * name (string)
 * dimensions ({string(255): string(255)})
 
 #### Response Examples
 ````
-[  
-   {  
-      "name":"name1",
-      "dimensions":{  
-         "key1":"value1"
-      }
-   },
-   {  
-      "name":"name2",
-      "dimensions":{  
-         "key1":"value1"
-      }
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "name": "name1",
+            "dimensions": {
+                "key1": "value1"
+            }
+        },
+        {
+            "name": "name2",
+            "dimensions": {
+                "key1": "value1"
+            }
+        }
+    ]
+}
+
 ````
 ___
 
@@ -853,7 +904,7 @@ Get measurements for metrics.
 None.
 
 #### Query Parameters
-* name (string(100), optional) - A metric name to filter metrics by.
+* name (string(255), optional) - A metric name to filter metrics by.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
@@ -875,50 +926,59 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of measurements objects for each unique metric with the following fields:
+Returns a JSON object with an 'elements' array of measurements objects for each unique metric with the following fields:
 
-* name (string(100)) - A name of a metric.
+* name (string(255)) - A name of a metric.
 * dimensions ({string(255): string(255)}) - The dimensions of a metric.
 * columns (array[string]) - An array of column names corresponding to the columns in measurements.
 * measurements (array[array[]]) - A two dimensional array of measurements for each timestamp.
 
 #### Response Examples
 ```
-[  
-   {  
-      "name":"cpu.system_perc",
-      "dimensions":{  
-         "hostname":"devstack"
-      },
-      "columns":[  
-         "id",
-         "timestamp",
-         "value"
-      ],
-      "measurements":[  
-         [  
-            6254100001,
-            "2014-07-18T03:24:25Z",
-            2.54
-         ],
-         [  
-            6248030003,
-            "2014-07-18T03:23:50Z",
-            2.21
-         ],
-         [  
-            6246680007,
-            "2014-07-18T03:23:14Z",
-            3.17
-         ],
-         [  
-            6242570022,
-            "2014-07-18T03:22:38Z",
-            2.12
-         ]
-      ]
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "1425359919000",
+            "name": "http_status",
+            "dimensions": {
+                "url": "http://localhost:8774/v2.0",
+                "hostname": "devstack",
+                "service": "compute"
+            },
+            "columns": [
+                "id",
+                "timestamp",
+                "value",
+                "value_meta"
+            ],
+            "measurements": [
+                [
+                    13432920001,
+                    "2015-03-03T05:22:28Z",
+                    0,
+                    {}
+                ],
+                [
+                    13430420001,
+                    "2015-03-03T05:22:12Z",
+                    0,
+                    {}
+                ],
+                [
+                    13427670001,
+                    "2015-03-03T05:21:55Z",
+                    1,
+                    {
+                        "rc": "404",
+                        "error": "Not Found"
+                    }
+                ]
+            ]
+        }
+    ]
+}
+
 ```
 ___
 
@@ -938,7 +998,7 @@ Get statistics for metrics.
 None.
 
 #### Query Parameters
-* name (string(100), required) - A metric name to filter metrics by.
+* name (string(255), required) - A metric name to filter metrics by.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 * statistics (string, required) - A comma separate array of statistics to evaluate. Valid statistics are avg, min, max, sum and count.
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
@@ -963,57 +1023,61 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of statistic objects for each unique metric with the following fields:
+Returns a JSON object with an 'elements' array of statistic objects for each unique metric with the following fields:
 
-* name (string(100)) - A name of a metric.
+* name (string(255)) - A name of a metric.
 * dimensions ({string(255): string(255)}) - The dimensions of a metric.
 * columns (array[string]) - An array of column names corresponding to the columns in statistics.
 * statistics (array[array[]]) - A two dimensional array of statistics for each period.
 
 #### Response Examples
 ```
-[  
-   {  
-      "name":"cpu.system_perc",
-      "dimensions":{  
-         "hostname":"devstack"
-      },
-      "columns":[  
-         "timestamp",
-         "avg",
-         "min",
-         "max",
-         "sum",
-         "count"
-      ],
-      "statistics":[  
-         [  
-            "2014-07-18T03:20:00Z",
-            2.765,
-            1.95,
-            4.93,
-            22.119999999999997,
-            8.0
-         ],
-         [  
-            "2014-07-18T03:10:00Z",
-            2.412941176470588,
-            1.71,
-            4.09,
-            41.019999999999996,
-            17.0
-         ],
-         [  
-            "2014-07-18T03:00:00Z",
-            2.1135294117647065,
-            1.62,
-            3.85,
-            35.93000000000001,
-            17.0
-         ]
-      ]
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "name": "cpu.system_perc",
+            "dimensions": {
+                "hostname": "devstack"
+            },
+            "columns": [
+                "timestamp",
+                "avg",
+                "min",
+                "max",
+                "sum",
+                "count"
+            ],
+            "statistics": [
+                [
+                    "2014-07-18T03:20:00Z",
+                    2.765,
+                    1.95,
+                    4.93,
+                    22.119999999999997,
+                    8
+                ],
+                [
+                    "2014-07-18T03:10:00Z",
+                    2.412941176470588,
+                    1.71,
+                    4.09,
+                    41.019999999999996,
+                    17
+                ],
+                [
+                    "2014-07-18T03:00:00Z",
+                    2.1135294117647065,
+                    1.62,
+                    3.85,
+                    35.93000000000001,
+                    17
+                ]
+            ]
+        }
+    ]
+}
+
 ```
 ___
 
@@ -1038,7 +1102,7 @@ None.
 
 #### Request Body
 * name (string(250), required) - A descriptive name of the notification method.
-* type (string(100), required) - The type of notification method (`EMAIL` or `WEBHOOK` ).
+* type (string(100), required) - The type of notification method (`EMAIL`, `WEBHOOK`, or `PAGERDUTY` ).
 * address (string(100), required) - The email/url address to notify.
 
 #### Request Examples
@@ -1120,7 +1184,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of notification method objects with the following fields:
+Returns a JSON object with an 'elements' array of notification method objects with the following fields:
 
 * id (string) - ID of notification method
 * links ([link]) 
@@ -1130,32 +1194,36 @@ Returns a JSON array of notification method objects with the following fields:
 
 #### Response Examples
 ```
-[  
-   {  
-      "id":"35cc6f1c-3a29-49fb-a6fc-d9d97d190508",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0/notification-methods/35cc6f1c-3a29-49fb-a6fc-d9d97d190508"
-         }
-      ],
-      "name":"Name of notification method",
-      "type":"EMAIL",
-      "address":"john.doe@hp.com"
-   },
-   {  
-      "id":"c60ec47e-5038-4bf1-9f95-4046c6e9a759",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0/notification-methods/c60ec47e-5038-4bf1-9f95-4046c6e9a759"
-         }
-      ],
-      "name":"Name of notification method",
-      "type":"EMAIL",
-      "address":"jane.doe@hp.com"
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "35cc6f1c-3a29-49fb-a6fc-d9d97d190508",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.10.4:8080/v2.0/notification-methods/35cc6f1c-3a29-49fb-a6fc-d9d97d190508"
+                }
+            ],
+            "name": "Name of notification method",
+            "type": "EMAIL",
+            "address": "john.doe@hp.com"
+        },
+        {
+            "id": "c60ec47e-5038-4bf1-9f95-4046c6e9a759",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.10.4:8080/v2.0/notification-methods/c60ec47e-5038-4bf1-9f95-4046c6e9a759"
+                }
+            ],
+            "name": "Name of notification method",
+            "type": "EMAIL",
+            "address": "jane.doe@hp.com"
+        }
+    ]
+}
+
 ```
 ___
 
@@ -1231,7 +1299,7 @@ None.
 
 #### Request Body
 * name (string(250), required) - A descriptive name of the notifcation method.
-* type (string(100), required) - The type of notification method (`EMAIL` or `WEBHOOK` ).
+* type (string(100), required) - The type of notification method (`EMAIL`, `WEBHOOK`, or `PAGERDUTY` ).
 * address (string(100), required) - The email/url address to notify.
 
 #### Request Examples
@@ -1378,7 +1446,7 @@ Cache-Control: no-cache
 * 201 - Created
 
 #### Response Body
-Returns a JSON array of alarm definition objects with the following fields:
+Returns a JSON object of alarm definition objects with the following fields:
 
 * id (string) - ID of alarm definition.
 * links ([link]) - Links to alarm definition.
@@ -1466,7 +1534,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of alarm objects with the following fields:
+Returns a JSON object with an 'elements' array of alarm objects with the following fields:
 
 * id (string) - ID of alarm definition.
 * links ([link]) - Links to alarm definition.
@@ -1483,45 +1551,49 @@ Returns a JSON array of alarm objects with the following fields:
 
 #### Response Examples
 ```
-[  
-   {  
-      "id":"f9935bcc-9641-4cbf-8224-0993a947ea83",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0/alarm-definitions/f9935bcc-9641-4cbf-8224-0993a947ea83"
-         }
-      ],
-      "name":"CPU percent greater than 10",
-      "description":"Release the hounds",
-      "expression":"(avg(cpu.user_perc{hostname=devstack}) > 10)",
-      "expression_data":{  
-         "function":"AVG",
-         "metric_name":"cpu.user_perc",
-         "dimensions":{  
-            "hostname":"devstack"
-         },
-         "operator":"GT",
-         "threshold":10.0,
-         "period":60,
-         "periods":1
-      },
-	  "match_by":[
-	    "hostname"
-	  ],
-      "severity":"CRITICAL",
-      "actions_enabled":true,
-      "alarm_actions":[  
-         "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
-      ],
-      "ok_actions":[  
-         "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
-      ],
-      "undetermined_actions":[  
-         "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
-      ]
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.10.4:8080/v2.0/alarm-definitions/f9935bcc-9641-4cbf-8224-0993a947ea83"
+                }
+            ],
+            "name": "CPU percent greater than 10",
+            "description": "Release the hounds",
+            "expression": "(avg(cpu.user_perc{hostname=devstack}) > 10)",
+            "expression_data": {
+                "function": "AVG",
+                "metric_name": "cpu.user_perc",
+                "dimensions": {
+                    "hostname": "devstack"
+                },
+                "operator": "GT",
+                "threshold": 10,
+                "period": 60,
+                "periods": 1
+            },
+            "match_by": [
+                "hostname"
+            ],
+            "severity": "CRITICAL",
+            "actions_enabled": true,
+            "alarm_actions": [
+                "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
+            ],
+            "ok_actions": [
+                "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
+            ],
+            "undetermined_actions": [
+                "c60ec47e-5038-4bf1-9f95-4046c6e9a759"
+            ]
+        }
+    ]
+}
+
 ```
 ___
 
@@ -1731,7 +1803,7 @@ Update select parameters of the specified alarm definition, and enable/disable i
 
 #### Headers
 * X-Auth-Token (string, required) - Keystone auth token
-* Content-Type (string, required) - application/json-patch+json
+* Content-Type (string, required) - application/json
 * Accept (string) - application/json
 
 #### Path Parameters
@@ -1760,7 +1832,7 @@ Only the parameters that are specified will be updated. See Changing Alarm Defin
 PATCH /v2.0/alarm-definitions/f9935bcc-9641-4cbf-8224-0993a947ea83 HTTP/1.1
 Host: 192.168.10.4:8080
 X-Auth-Token: 2b8882ba2ec44295bf300aecb2caa4f7
-Content-Type: application/json-patch+json
+Content-Type: application/json
 Cache-Control: no-cache
 
 {  
@@ -1913,7 +1985,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of alarm objects with the following fields:
+Returns a JSON object with an 'elements' array of alarm objects with the following fields:
 
 * id (string) - ID of alarm.
 * links ([link]) - Links to alarm.
@@ -1923,39 +1995,44 @@ Returns a JSON array of alarm objects with the following fields:
 
 #### Response Examples
 ```
-[  
-   {  
-      "id":"f9935bcc-9641-4cbf-8224-0993a947ea83",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83"
-         },
-         {  
-            "rel":"state-history",
-            "href":"http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83/state-history"
-         }
-      ],
-      "alarm_definition": {
-         "severity": "LOW", 
-         "id": "b7e5f472-7aa5-4254-a49a-463e749ae817", 
-         "links": [
-            {
-               "href": "http://192.168.10.4:8080/v2.0/alarm-definitions/b7e5f472-7aa5-4254-a49a-463e749ae817", 
-               "rel": "self"
-            }
-      ], 
-      "name": "high cpu and load"
-    }
-      "metrics":[{
-         "name":"cpu.system_perc",
-         "dimensions":{  
-            "hostname":"devstack"
-         }
-      }],
-      "state":"OK"
-   }
-]
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
+            "links": [
+                {
+                    "rel": "self",
+                    "href": "http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83"
+                },
+                {
+                    "rel": "state-history",
+                    "href": "http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83/state-history"
+                }
+            ],
+            "alarm_definition": {
+                "severity": "LOW",
+                "id": "b7e5f472-7aa5-4254-a49a-463e749ae817",
+                "links": [
+                    {
+                        "href": "http://192.168.10.4:8080/v2.0/alarm-definitions/b7e5f472-7aa5-4254-a49a-463e749ae817",
+                        "rel": "self"
+                    }
+                ],
+                "name": "high cpu and load"
+            },
+            "metrics": [
+                {
+                    "name": "cpu.system_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "state": "OK"
+        }
+    ]
+}
 ```
 ___
 
@@ -1984,93 +2061,141 @@ None.
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of alarm state transition objects with the following fields:
+Returns a JSON object with an 'elements' array of alarm state transition objects with the following fields:
 
+* id - Alarm State Transition ID.
 * alarm_id (string) - Alarm ID.
-* metric_name (string(255), optional) - Name of metric to filter by.
-* metric_dimensions ({string(255): string(255)}, optional) - Dimensions of metrics to filter by specified as a comma separated array of (key, value) pairs as `key1:value1,key1:value1, ...`
+* metrics ({string, string, string(255): string(255)}) - The metrics associated with the alarm state transition.
 * old_state (string) - The old state of the alarm. Either `OK`, `ALARM` or `UNDETERMINED`.
 * new_state (string) - The new state of the alarm. Either `OK`, `ALARM` or `UNDETERMINED`.
 * reason (string) - The reason for the state transition.
 * reason_data (string) - The reason for the state transition as a JSON object.
 * timestamp (string) - The time in ISO 8601 combined date and time format in UTC when the state transition occurred.
+* sub_alarms ({{string, string, string(255): string(255), string, string, string, string}, string, [string]) - The sub-alarms stated of when the alarm state transition occurred.
 
 #### Response Examples
 ```
-[
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "1424451007002",
+            "alarm_id": "bc7f388d-3522-47bd-b4ae-41567090ab72",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "cpu.system_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "UNDETERMINED",
+            "new_state": "OK",
+            "reason": "The alarm threshold(s) have not been exceeded for the sub-alarms: avg(cpu.system_perc{hostname=devstack}) > 15.0 with the values: [1.5]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T16:50:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "cpu.system_perc",
+                        "dimensions": {
+                            "hostname": "devstack"
+                        },
+                        "operator": "GT",
+                        "threshold": 15,
+                        "period": 60,
+                        "periods": 1
+                    },
+                    "sub_alarm_state": "OK",
+                    "current_values": [
+                        1.5
+                    ]
+                }
+            ]
         },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:38:15.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
+        {
+            "id": "1424448727001",
+            "alarm_id": "5ec51b06-193b-49f7-bcf7-b80d11010137",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "mysql.performance.slow_queries",
+                    "dimensions": {
+                        "component": "mysql",
+                        "service": "mysql",
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "ALARM",
+            "new_state": "OK",
+            "reason": "The alarm threshold(s) have not been exceeded for the sub-alarms: avg(mysql.performance.slow_queries) > 10.0 times 3 with the values: [29.23069852941176, 20.146139705882355, 7.536764705882352]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T16:12:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "mysql.performance.slow_queries",
+                        "dimensions": {},
+                        "operator": "GT",
+                        "threshold": 10,
+                        "period": 60,
+                        "periods": 3
+                    },
+                    "sub_alarm_state": "OK",
+                    "current_values": [
+                        29.23069852941176,
+                        20.146139705882355,
+                        7.536764705882352
+                    ]
+                }
+            ]
         },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:42.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "No data was present for the sub-alarms: [avg(cpu.system_perc{hostname=devstack}) > 15.0]",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:26.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:18.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "No data was present for the sub-alarms: [avg(cpu.system_perc{hostname=devstack}) > 15.0]",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:26:26.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:26:20.000Z"
-    }
-]
+        {
+            "id": "1424448667000",
+            "alarm_id": "5ec51b06-193b-49f7-bcf7-b80d11010137",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "mysql.performance.slow_queries",
+                    "dimensions": {
+                        "component": "mysql",
+                        "service": "mysql",
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "OK",
+            "new_state": "ALARM",
+            "reason": "Thresholds were exceeded for the sub-alarms: avg(mysql.performance.slow_queries) > 10.0 times 3 with the values: [36.32720588235294, 29.23069852941176, 20.146139705882355]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T16:11:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "mysql.performance.slow_queries",
+                        "dimensions": {},
+                        "operator": "GT",
+                        "threshold": 10,
+                        "period": 60,
+                        "periods": 3
+                    },
+                    "sub_alarm_state": "ALARM",
+                    "current_values": [
+                        36.32720588235294,
+                        29.23069852941176,
+                        20.146139705882355
+                    ]
+                }
+            ]
+        }
+    ]
+}
+
 ```
 ___
 
@@ -2212,7 +2337,7 @@ Update select parameters of the specified alarm, set the alarm state and enable/
 
 #### Headers
 * X-Auth-Token (string, required) - Keystone auth token
-* Content-Type (string, required) - application/json-patch+json
+* Content-Type (string, required) - application/json
 * Accept (string) - application/json
 
 #### Path Parameters
@@ -2231,7 +2356,7 @@ Consists of an alarm with the following mutable properties:
 PATCH /v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83 HTTP/1.1
 Host: 192.168.10.4:8080
 X-Auth-Token: 2b8882ba2ec44295bf300aecb2caa4f7
-Content-Type: application/json-patch+json
+Content-Type: application/json
 Cache-Control: no-cache
 
 {  
@@ -2255,29 +2380,30 @@ Returns a JSON alarm object with the following fields:
 
 #### Response Examples
 ```
-[  
-   {  
-      "id":"f9935bcc-9641-4cbf-8224-0993a947ea83",
-      "links":[  
-         {  
-            "rel":"self",
-            "href":"http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83"
-         },
-         {  
-            "rel":"state-history",
-            "href":"http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83/state-history"
-         }
-      ],
-      "alarm_definition_id":"ad837fca-5564-4cbf-523-0117f7dac6ad",
-      "metrics":[{
-         "name":"cpu.system_perc",
-         "dimensions":{  
-            "hostname":"devstack"
-         }
-      }],
-      "state":"OK"
-   }
-]
+{
+    "id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83"
+        },
+        {
+            "rel": "state-history",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83/state-history"
+        }
+    ],
+    "alarm_definition_id": "ad837fca-5564-4cbf-523-0117f7dac6ad",
+    "metrics": [
+        {
+            "name": "cpu.system_perc",
+            "dimensions": {
+                "hostname": "devstack"
+            }
+        }
+    ],
+    "state": "OK"
+}
+
 ```
 ___
 
@@ -2334,7 +2460,7 @@ None.
 
 #### Request Data
 ```
-GET /v2.0/alarms/f9935bcc-9641-4cbf-8224-0993a947ea83/state-history HTTP/1.1
+GET /v2.0/alarms/37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0/state-history HTTP/1.1
 Host: 192.168.10.4:8080
 X-Auth-Token: 2b8882ba2ec44295bf300aecb2caa4f7
 Cache-Control: no-cache
@@ -2345,93 +2471,156 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON array of alarm state transition objects with the following fields:
+Returns a JSON object with an 'elements' array of alarm state transition objects with the following fields:
 
+* id - Alarm State Transition ID.
 * alarm_id (string) - Alarm ID.
-* metric_name (string(255), optional) - Name of metric to filter by.
-* metric_dimensions ({string(255): string(255)}, optional) - Dimensions of metrics to filter by specified as a comma separated array of (key, value) pairs as `key1:value1,key1:value1, ...`
+* metrics ({string, string, string(255): string(255)}) - The metrics associated with the alarm state transition.
 * old_state (string) - The old state of the alarm. Either `OK`, `ALARM` or `UNDETERMINED`.
 * new_state (string) - The new state of the alarm. Either `OK`, `ALARM` or `UNDETERMINED`.
 * reason (string) - The reason for the state transition.
 * reason_data (string) - The reason for the state transition as a JSON object.
 * timestamp (string) - The time in ISO 8601 combined date and time format in UTC when the state transition occurred.
+* sub_alarms ({{string, string, string(255): string(255), string, string, string, string}, string, [string]) - The sub-alarms stated of when the alarm state transition occurred.
 
 #### Response Examples
 ```
-[
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
+{
+    "links": [],
+    "elements": [
+        {
+            "id": "1424452147003",
+            "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "cpu.idle_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "OK",
+            "new_state": "ALARM",
+            "reason": "Thresholds were exceeded for the sub-alarms: avg(cpu.idle_perc) < 10.0 times 3 with the values: [0.0, 0.0, 0.0]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T17:09:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "cpu.idle_perc",
+                        "dimensions": {},
+                        "operator": "LT",
+                        "threshold": 10,
+                        "period": 60,
+                        "periods": 3
+                    },
+                    "sub_alarm_state": "ALARM",
+                    "current_values": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            ]
         },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:38:15.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
+        {
+            "id": "1424451727002",
+            "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "cpu.idle_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "ALARM",
+            "new_state": "OK",
+            "reason": "The alarm threshold(s) have not been exceeded for the sub-alarms: avg(cpu.idle_perc) < 10.0 times 3 with the values: [0.0, 0.0, 72.475]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T17:02:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "cpu.idle_perc",
+                        "dimensions": {},
+                        "operator": "LT",
+                        "threshold": 10,
+                        "period": 60,
+                        "periods": 3
+                    },
+                    "sub_alarm_state": "OK",
+                    "current_values": [
+                        0,
+                        0,
+                        72.475
+                    ]
+                }
+            ]
         },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:42.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
+        {
+            "id": "1424451367001",
+            "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "cpu.idle_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "OK",
+            "new_state": "ALARM",
+            "reason": "Thresholds were exceeded for the sub-alarms: avg(cpu.idle_perc) < 10.0 times 3 with the values: [0.0, 0.0, 0.0]",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T16:56:07.000Z",
+            "sub_alarms": [
+                {
+                    "sub_alarm_expression": {
+                        "function": "AVG",
+                        "metric_name": "cpu.idle_perc",
+                        "dimensions": {},
+                        "operator": "LT",
+                        "threshold": 10,
+                        "period": 60,
+                        "periods": 3
+                    },
+                    "sub_alarm_state": "ALARM",
+                    "current_values": [
+                        0,
+                        0,
+                        0
+                    ]
+                }
+            ]
         },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "No data was present for the sub-alarms: [avg(cpu.system_perc{hostname=devstack}) > 15.0]",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:26.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:37:18.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "ALARM",
-        "new_state": "UNDETERMINED",
-        "reason": "No data was present for the sub-alarms: [avg(cpu.system_perc{hostname=devstack}) > 15.0]",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:26:26.000Z"
-    },
-    {
-        "alarm_id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
-        "metric_name": "cpu.system_perc",
-        "metric_dimensions": {
-          "hostname": "devstack"
-        },
-        "old_state": "UNDETERMINED",
-        "new_state": "ALARM",
-        "reason": "Alarm state updated via API",
-        "reason_data": "{}",
-        "timestamp": "2014-07-19T03:26:20.000Z"
-    }
-]
+        {
+            "id": "1424444550000",
+            "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
+            "metrics": [
+                {
+                    "id": null,
+                    "name": "cpu.idle_perc",
+                    "dimensions": {
+                        "hostname": "devstack"
+                    }
+                }
+            ],
+            "old_state": "UNDETERMINED",
+            "new_state": "OK",
+            "reason": "The alarm threshold(s) have not been exceeded",
+            "reason_data": "{}",
+            "timestamp": "2015-02-20T15:02:30.000Z",
+            "sub_alarms": []
+        }
+    ]
+}
+
 ```
 ___
 
