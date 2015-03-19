@@ -79,6 +79,9 @@ public class CreateNotificationMethodCommand {
       case PAGERDUTY : {
         // No known validation for PAGERDUTY type at this time
       }; break;
+      case OCCI_WEBHOOK : {
+        // No Validation Method for OCCI_WEBHOOK, to derive from WEBHOOK
+      }; break;
     }
   }
 }
