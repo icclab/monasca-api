@@ -15,6 +15,7 @@ package monasca.api.resource;
 
 import com.codahale.metrics.annotation.Timed;
 
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -22,12 +23,14 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 
 import monasca.api.domain.model.version.Version;
 import monasca.api.domain.model.version.VersionRepo;
+import monasca.api.infrastructure.persistence.PersistUtils;
 
 /**
  * Version resource implementation.
@@ -36,16 +39,23 @@ import monasca.api.domain.model.version.VersionRepo;
 @Produces(MediaType.APPLICATION_JSON)
 public class VersionResource {
   private final VersionRepo repository;
+  private final PersistUtils persistUtils;
 
   @Inject
-  public VersionResource(VersionRepo repository) {
+  public VersionResource(VersionRepo repository,
+                         PersistUtils persistUtils) {
     this.repository = repository;
+    this.persistUtils = persistUtils;
   }
 
   @GET
   @Timed
-  public Object list(@Context UriInfo uriInfo) {
-    return Links.paginate(null, Links.hydrate(repository.find(), uriInfo), uriInfo);
+  public Object list(@Context UriInfo uriInfo,
+                     @QueryParam("offset") String offset,
+                     @QueryParam("limit") String limit) throws UnsupportedEncodingException {
+
+    return Links.paginate(this.persistUtils.getLimit(limit),
+                          Links.hydrate(repository.find(), uriInfo), uriInfo);
   }
 
   @GET
