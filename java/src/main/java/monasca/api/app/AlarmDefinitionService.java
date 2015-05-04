@@ -36,6 +36,7 @@ import com.google.common.collect.Sets;
 
 import monasca.api.ApiConfig;
 import monasca.api.app.command.UpdateAlarmDefinitionCommand;
+import monasca.api.app.validation.DimensionValidation;
 import monasca.common.model.event.AlarmDefinitionCreatedEvent;
 import monasca.common.model.event.AlarmDefinitionDeletedEvent;
 import monasca.common.model.event.AlarmDefinitionUpdatedEvent;
@@ -106,6 +107,7 @@ public class AlarmDefinitionService {
       throw new EntityExistsException(
           "An alarm definition already exists for project / tenant: %s named: %s", tenantId, name);
     }
+    DimensionValidation.validateNames(matchBy);
     assertActionsExist(tenantId, alarmActions, okActions, undeterminedActions);
 
     Map<String, AlarmSubExpression> subAlarms = new HashMap<String, AlarmSubExpression>();
@@ -150,7 +152,7 @@ public class AlarmDefinitionService {
 
     // Have to get information about the Alarms before they are deleted. They will be deleted
     // by the database as a cascade delete from the Alarm Definition delete
-    final List<Alarm> alarms = alarmRepo.find(tenantId, alarmDefId, null, null, null, null, 1, false);
+    final List<Alarm> alarms = alarmRepo.find(tenantId, alarmDefId, null, null, null, null, null, 1, false);
     final Map<String, Map<String, AlarmSubExpression>> alarmSubExpressions =
                                           alarmRepo.findAlarmSubExpressionsForAlarmDefinition(alarmDefId);
 

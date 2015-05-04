@@ -14,6 +14,7 @@
 package monasca.api.app.validation;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -33,7 +34,8 @@ public final class DimensionValidation {
   private static final Map<String, DimensionValidator> VALIDATORS;
   private static final Pattern UUID_PATTERN = Pattern
       .compile("\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}");
-  private static final Pattern VALID_DIMENSION_NAME = Pattern.compile("^[a-zA-Z0-9_\\.\\-]+$");
+  private static final Pattern VALID_DIMENSION_NAME = Pattern.compile("[^><={}(), '\";&]+$");
+  private static final String INVALID_CHAR_STRING = "> < = { } ( ) ' \" , ; &";
 
   private DimensionValidation() {}
 
@@ -127,9 +129,14 @@ public final class DimensionValidation {
       if (value.length() > 255)
         throw Exceptions.unprocessableEntity("Dimension value %s must be 255 characters or less",
             value);
+      // Dimension names that start with underscores are reserved for internal use only.
+      if (name.startsWith("_")) {
+        throw Exceptions.unprocessableEntity("Dimension name cannot start with underscore (_)",
+                                             name);
+      }
       if (!VALID_DIMENSION_NAME.matcher(name).matches())
         throw Exceptions.unprocessableEntity(
-            "Dimension name %s may only contain: a-z A-Z 0-9 _ - .", name);
+            "Dimension name %s may not contain: %s", name, INVALID_CHAR_STRING);
 
       // Service specific validations
       if (service != null) {
@@ -141,6 +148,33 @@ public final class DimensionValidation {
         if (validator != null && !validator.isValidDimension(name, value))
           throw Exceptions.unprocessableEntity("%s is not a valid dimension value for service %s",
               value, service);
+      }
+    }
+  }
+
+  /**
+   * Validates a list of dimension names
+   * @param names
+   */
+
+  public static void validateNames(List<String> names) {
+    if(names != null) {
+      for (String name : names) {
+        if (Strings.isNullOrEmpty(name)) {
+          throw Exceptions.unprocessableEntity("Dimension name cannot be empty");
+        }
+        if (name.length() > 255) {
+          throw Exceptions.unprocessableEntity("Dimension name '%s' must be 255 characters or less",
+                                               name);
+        }
+        // Dimension names that start with underscores are reserved for internal use only.
+        if (name.startsWith("_")) {
+          throw Exceptions.unprocessableEntity("Dimension name '%s' cannot start with underscore (_)",
+                                               name);
+        }
+        if (!VALID_DIMENSION_NAME.matcher(name).matches())
+          throw Exceptions.unprocessableEntity(
+              "Dimension name '%s' may not contain: %s", name, INVALID_CHAR_STRING);
       }
     }
   }

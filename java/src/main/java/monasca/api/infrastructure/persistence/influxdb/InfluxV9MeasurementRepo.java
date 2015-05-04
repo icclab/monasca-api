@@ -31,6 +31,7 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import monasca.api.ApiConfig;
+import monasca.api.domain.exception.MultipleMetricsException;
 import monasca.api.domain.model.measurement.MeasurementRepo;
 import monasca.api.domain.model.measurement.Measurements;
 
@@ -65,7 +66,8 @@ public class InfluxV9MeasurementRepo implements MeasurementRepo {
   @Override
   public List<Measurements> find(String tenantId, String name, Map<String, String> dimensions,
                                  DateTime startTime, @Nullable DateTime endTime,
-                                 @Nullable String offset, int limit, Boolean mergeMetricsFlag) throws Exception {
+                                 @Nullable String offset, int limit, Boolean mergeMetricsFlag)
+      throws Exception {
 
     String q = buildQuery(tenantId, name, dimensions, startTime, endTime,
                           offset, limit, mergeMetricsFlag);
@@ -83,8 +85,9 @@ public class InfluxV9MeasurementRepo implements MeasurementRepo {
   }
 
   private String buildQuery(String tenantId, String name, Map<String, String> dimensions,
-                          DateTime startTime, DateTime endTime, String offset, int limit,
-                          Boolean mergeMetricsFlag) throws Exception {
+                            DateTime startTime, DateTime endTime, String offset, int limit,
+                            Boolean mergeMetricsFlag) throws Exception {
+
     String q;
     if (Boolean.TRUE.equals(mergeMetricsFlag)) {
 
@@ -92,8 +95,8 @@ public class InfluxV9MeasurementRepo implements MeasurementRepo {
       q = String.format("select * %1$s "
                         + "where %2$s %3$s %4$s %5$s %6$s %7$s %8$s",
                         this.influxV9Utils.namePart(name, true),
-                        this.influxV9Utils.tenantIdPart(tenantId),
-                        this.influxV9Utils.regionPart(this.region),
+                        this.influxV9Utils.privateTenantIdPart(tenantId),
+                        this.influxV9Utils.privateRegionPart(this.region),
                         this.influxV9Utils.startTimePart(startTime),
                         this.influxV9Utils.dimPart(dimensions),
                         this.influxV9Utils.endTimePart(endTime),
@@ -105,15 +108,16 @@ public class InfluxV9MeasurementRepo implements MeasurementRepo {
 
       if (!this.influxV9MetricDefinitionRepo.isAtMostOneSeries(tenantId, name, dimensions)) {
 
-        throw new IllegalArgumentException(this.influxV9Utils.getMultipleMetricsErrorMsg());
+        throw new MultipleMetricsException(name, dimensions);
+
       }
 
       // Had to use * to handle value meta. If we select valueMeta and it does not exist, then error.
       q = String.format("select * %1$s "
                         + "where %2$s %3$s %4$s %5$s %6$s %7$s %8$s %9$s slimit 1",
                         this.influxV9Utils.namePart(name, true),
-                        this.influxV9Utils.tenantIdPart(tenantId),
-                        this.influxV9Utils.regionPart(this.region),
+                        this.influxV9Utils.privateTenantIdPart(tenantId),
+                        this.influxV9Utils.privateRegionPart(this.region),
                         this.influxV9Utils.startTimePart(startTime),
                         this.influxV9Utils.dimPart(dimensions),
                         this.influxV9Utils.endTimePart(endTime),
@@ -136,13 +140,14 @@ public class InfluxV9MeasurementRepo implements MeasurementRepo {
 
       for (Serie serie : series.getSeries()) {
 
-        Measurements measurements = new Measurements(serie.getName(), serie.getTags());
+        Measurements measurements =
+            new Measurements(serie.getName(),
+                             influxV9Utils.filterPrivateTags(serie.getTags()));
 
         for (String[] values : serie.getValues()) {
 
           measurements.addMeasurement(
-              new Object[]{values[0], values[0], Double.parseDouble(values[1]),
-                           getValueMeta(values)});
+              new Object[]{values[0], Double.parseDouble(values[1]), getValueMeta(values)});
         }
 
         measurementsList.add(measurements);

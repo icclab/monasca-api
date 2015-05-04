@@ -35,6 +35,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 
+import monasca.api.ApiConfig;
 import monasca.api.app.MetricService;
 import monasca.api.app.command.CreateMetricCommand;
 import monasca.api.app.validation.Validation;
@@ -49,16 +50,22 @@ import monasca.common.model.metric.Metric;
  */
 @Path("/v2.0/metrics")
 public class MetricResource {
-  private static final String MONITORING_DELEGATE_ROLE = "monitoring-delegate";
-    private static final Splitter COMMA_SPLITTER = Splitter.on(',').omitEmptyStrings().trimResults();
 
+  private static final Splitter COMMA_SPLITTER = Splitter.on(',').omitEmptyStrings().trimResults();
+
+  private final String monitoring_delegate_role;
   private final MetricService service;
   private final MetricDefinitionRepo metricRepo;
   private final PersistUtils persistUtils;
 
   @Inject
-  public MetricResource(MetricService service, MetricDefinitionRepo metricRepo,
+  public MetricResource(ApiConfig config, MetricService service, MetricDefinitionRepo metricRepo,
                         PersistUtils persistUtils) {
+    if (config.middleware == null || config.middleware.delegateAuthorizedRole == null) {
+      this.monitoring_delegate_role = "monitoring-delegate";
+    } else {
+      this.monitoring_delegate_role = config.middleware.delegateAuthorizedRole;
+    }
     this.service = service;
     this.metricRepo = metricRepo;
     this.persistUtils = persistUtils;
@@ -74,7 +81,7 @@ public class MetricResource {
     boolean
         isDelegate =
         !Strings.isNullOrEmpty(roles) && COMMA_SPLITTER.splitToList(roles)
-            .contains(MONITORING_DELEGATE_ROLE);
+            .contains(monitoring_delegate_role);
     List<Metric> metrics = new ArrayList<>(commands.length);
     for (CreateMetricCommand command : commands) {
       if (!isDelegate) {
@@ -85,7 +92,7 @@ public class MetricResource {
                 .forbidden("Project %s cannot POST metrics for the hpcs service", tenantId);
           }
         }
-        if (!Strings.isNullOrEmpty(crossTenantId)) {
+        if (!Strings.isNullOrEmpty(crossTenantId) && !crossTenantId.equals(tenantId)) {
           throw Exceptions.forbidden("Project %s cannot POST cross tenant metrics", tenantId);
         }
       }
@@ -109,9 +116,27 @@ public class MetricResource {
     Map<String, String>
         dimensions =
         Strings.isNullOrEmpty(dimensionsStr) ? null : Validation
-            .parseAndValidateNameAndDimensions(name, dimensionsStr);
+            .parseAndValidateNameAndDimensions(name, dimensionsStr, false);
 
     return Links.paginate(this.persistUtils.getLimit(limit),
                           metricRepo.find(tenantId, name, dimensions, offset, this.persistUtils.getLimit(limit)), uriInfo);
+  }
+
+  @GET
+  @Path("/names")
+  @Timed
+  @Produces(MediaType.APPLICATION_JSON)
+  public Object getMetricNames(@Context UriInfo uriInfo,
+                               @HeaderParam("X-Tenant-Id") String tenantId,
+                               @QueryParam("dimensions") String dimensionsStr,
+                               @QueryParam("offset") String offset,
+                               @QueryParam("limit") String limit) throws Exception {
+    Map<String, String>
+        dimensions =
+        Strings.isNullOrEmpty(dimensionsStr) ? null : Validation
+            .parseAndValidateDimensions(dimensionsStr);
+
+    return Links.paginate(this.persistUtils.getLimit(limit),
+                          metricRepo.findNames(tenantId, dimensions, offset, this.persistUtils.getLimit(limit)), uriInfo);
   }
 }

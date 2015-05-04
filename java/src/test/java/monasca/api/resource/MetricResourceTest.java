@@ -32,6 +32,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.testng.annotations.Test;
 
+import monasca.api.ApiConfig;
 import monasca.api.app.MetricService;
 import monasca.api.app.command.CreateMetricCommand;
 import monasca.api.domain.model.metric.MetricDefinitionRepo;
@@ -63,7 +64,7 @@ public class MetricResourceTest extends AbstractMonApiResourceTest {
     doNothing().when(service).create(any(List.class), anyString(), anyString());
 
     metricRepo = mock(MetricDefinitionRepo.class);
-    addResources(new MetricResource(service, metricRepo, new PersistUtils()));
+    addResources(new MetricResource(new ApiConfig(), service, metricRepo, new PersistUtils()));
   }
 
   @SuppressWarnings("unchecked")
@@ -160,11 +161,11 @@ public class MetricResourceTest extends AbstractMonApiResourceTest {
 
   public void shouldErrorOnCreateWithIllegalCharsInName() {
     ClientResponse response =
-        createResponseFor(new CreateMetricCommand("hpcs@.compute%", dimensions, timestamp, 22.0,
+        createResponseFor(new CreateMetricCommand("hpcs{.compute%", dimensions, timestamp, 22.0,
             valueMeta));
 
     ErrorMessages.assertThat(response.getEntity(String.class)).matches("unprocessable_entity", 422,
-        "Metric name hpcs@.compute% may only contain: a-z A-Z 0-9 _ - .");
+        "Metric name hpcs{.compute% may not contain: > < = { } ( ) ' \" , ; &");
   }
 
   public void shouldErrorOnCreateWithTooLongName() {

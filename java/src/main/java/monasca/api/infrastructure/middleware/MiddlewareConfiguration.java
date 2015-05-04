@@ -49,6 +49,8 @@ public class MiddlewareConfiguration {
   @JsonProperty
   public List<String> agentAuthorizedRoles;
   @JsonProperty
+  public String delegateAuthorizedRole;
+  @JsonProperty
   public String timeToCacheToken = "600";
   @JsonProperty
   public String adminAuthMethod;
@@ -58,6 +60,10 @@ public class MiddlewareConfiguration {
   public String adminToken;
   @JsonProperty
   public String adminPassword;
+  @JsonProperty
+  public String adminProjectId = "";
+  @JsonProperty
+  public String adminProjectName = "";
   @JsonProperty
   public String maxTokenCacheSize = "1048576";
   @JsonProperty

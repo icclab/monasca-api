@@ -18,31 +18,68 @@ import com.google.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import monasca.api.infrastructure.persistence.PersistUtils;
 
-import static monasca.api.infrastructure.persistence.influxdb.InfluxV8Utils.SQLSanitizer.sanitize;
-import static monasca.api.infrastructure.persistence.influxdb.InfluxV8Utils.WhereClauseBuilder.buildTimePart;
-import static monasca.api.infrastructure.persistence.influxdb.InfluxV8Utils.buildAlarmsPart;
-
 public class InfluxV9Utils {
 
-  private static final String
-      MULTIPLE_METRICS_ERROR_MSG =
-      "Found multiple metrics matching search criteria. "
-      + "Please refine your search criteria using additional dimensions "
-      + "or specify merge_metrics=true as query param to combine "
-      + "all metrics into a single series.";
-
   private final PersistUtils persistUtils;
+
+  private static final Pattern sqlUnsafePattern = Pattern.compile("^.*('|;|\")+.*$");
 
   @Inject
   public InfluxV9Utils(PersistUtils persistUtils) {
 
     this.persistUtils = persistUtils;
 
+  }
+
+  public String sanitize(final String taintedString) throws Exception {
+    Matcher m = sqlUnsafePattern.matcher(taintedString);
+    if (m.matches()) {
+      throw new Exception(String.format("Input from user contains single quote ['] or "
+                                        + "semi-colon [;] or double quote [\"] characters[ %1$s ]",
+                                        taintedString));
+    }
+
+    return taintedString;
+  }
+
+  String buildTimePart(final DateTime startTime, final DateTime endTime) {
+    final StringBuilder sb = new StringBuilder();
+
+    if (startTime != null) {
+      sb.append(String.format(" and time > %1$ds", startTime.getMillis() / 1000));
+    }
+
+    if (endTime != null) {
+      sb.append(String.format(" and time < %1$ds", endTime.getMillis() / 1000));
+    }
+
+    return sb.toString();
+  }
+
+
+  public String buildAlarmsPart(List<String> alarmIds) {
+
+    StringBuilder sb = new StringBuilder();
+    for (String alarmId : alarmIds) {
+      if (sb.length() > 0) {
+        sb.append(" or ");
+      }
+      sb.append(String.format(" alarm_id = '%1$s' ", alarmId));
+    }
+
+    if (sb.length() > 0) {
+      sb.insert(0, " and (");
+      sb.insert(sb.length(), ")");
+    }
+    return sb.toString();
   }
 
   public String groupByPart() {
@@ -66,13 +103,23 @@ public class InfluxV9Utils {
     }
   }
 
-  public String tenantIdPart(String tenantId) throws Exception {
+  public String publicTenantIdPart(String tenantId) throws Exception {
 
     if (tenantId == null || tenantId.isEmpty()) {
       throw new Exception(String.format("Found null or empty tenant id: %1$s", tenantId));
     }
 
     return " tenant_id=" + "'" + sanitize(tenantId) + "'";
+
+  }
+
+  public String privateTenantIdPart(String tenantId) throws Exception {
+
+    if (tenantId == null || tenantId.isEmpty()) {
+      throw new Exception(String.format("Found null or empty tenant id: %1$s", tenantId));
+    }
+
+    return " _tenant_id=" + "'" + sanitize(tenantId) + "'";
 
   }
 
@@ -95,13 +142,13 @@ public class InfluxV9Utils {
     return String.format(" and time > '%1$s'", offset);
   }
 
-  public String regionPart(String region) throws Exception {
+  public String privateRegionPart(String region) throws Exception {
 
     if (region == null || region.isEmpty()) {
       throw new Exception(String.format("Found null or empty region: %1$s", region));
     }
 
-    return " and region=" + "'" + sanitize(region) + "'";
+    return " and _region=" + "'" + sanitize(region) + "'";
 
   }
 
@@ -168,7 +215,7 @@ public class InfluxV9Utils {
   public String periodPartWithGroupBy(int period) {
 
     return period > 0 ? String.format(" group by time(%1$ds), * fill(0)", period)
-                       : " group by time(300s), * fill(0)";
+                      : " group by time(300s), * fill(0)";
   }
 
   public String periodPart(int period) {
@@ -177,9 +224,13 @@ public class InfluxV9Utils {
                       : " group by time(300s) fill(0)";
   }
 
-  public String getMultipleMetricsErrorMsg() {
+  Map<String, String> filterPrivateTags(Map<String, String> tagMap) {
 
-    return MULTIPLE_METRICS_ERROR_MSG;
+    Map<String, String> filteredMap = new HashMap<>(tagMap);
 
+    filteredMap.remove("_tenant_id");
+    filteredMap.remove("_region");
+
+    return filteredMap;
   }
 }

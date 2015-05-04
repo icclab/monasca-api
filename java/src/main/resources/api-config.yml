@@ -22,7 +22,7 @@ kafka:
 
 mysql:
   driverClass: com.mysql.jdbc.Driver
-  url: jdbc:mysql://192.168.10.4:3306/mon?connectTimeout=5000&autoReconnect=true
+  url: jdbc:mysql://192.168.10.4:3306/mon?connectTimeout=5000&autoReconnect=true&useLegacyDatetimeCode=false
   user: monapi
   password: password
   maxWaitForConnection: 1s
@@ -38,10 +38,6 @@ databaseConfiguration:
 
 # Uncomment if databaseType is influxDB
 influxDB:
-  # version can be (V8 | V9)
-  # If no version set then defaults to V8.
-  version: V8
-  # Used only if version is V9.
   maxHttpConnections: 100
   name: mon
   replicationFactor: 1
@@ -80,6 +76,8 @@ middleware:
   adminAuthMethod: password
   adminUser: admin
   adminPassword: admin
+  adminProjectId:
+  adminProjectName:
   adminToken:
   timeToCacheToken: 600
   maxTokenCacheSize: 1048576

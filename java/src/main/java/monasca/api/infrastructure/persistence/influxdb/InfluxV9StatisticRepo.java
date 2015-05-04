@@ -21,6 +21,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,11 +30,12 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 import monasca.api.ApiConfig;
+import monasca.api.domain.exception.MultipleMetricsException;
 import monasca.api.domain.model.statistic.StatisticRepo;
 import monasca.api.domain.model.statistic.Statistics;
 
 
-public class InfluxV9StatisticRepo implements StatisticRepo{
+public class InfluxV9StatisticRepo implements StatisticRepo {
 
 
   private static final Logger logger = LoggerFactory.getLogger(InfluxV9StatisticRepo.class);
@@ -95,8 +97,8 @@ public class InfluxV9StatisticRepo implements StatisticRepo{
                         + "where %3$s %4$s %5$s %6$s %7$s %8$s %9$s %10$s",
                         funcPart(statistics),
                         this.influxV9Utils.namePart(name, true),
-                        this.influxV9Utils.tenantIdPart(tenantId),
-                        this.influxV9Utils.regionPart(this.region),
+                        this.influxV9Utils.privateTenantIdPart(tenantId),
+                        this.influxV9Utils.privateRegionPart(this.region),
                         this.influxV9Utils.startTimePart(startTime),
                         this.influxV9Utils.dimPart(dimensions),
                         this.influxV9Utils.endTimePart(endTime),
@@ -109,15 +111,15 @@ public class InfluxV9StatisticRepo implements StatisticRepo{
 
       if (!this.influxV9MetricDefinitionRepo.isAtMostOneSeries(tenantId, name, dimensions)) {
 
-        throw new IllegalArgumentException(this.influxV9Utils.getMultipleMetricsErrorMsg());
+        throw new MultipleMetricsException(name, dimensions);
       }
 
       q = String.format("select %1$s %2$s "
                         + "where %3$s %4$s %5$s %6$s %7$s %8$s %9$s %10$s slimit 1",
                         funcPart(statistics),
                         this.influxV9Utils.namePart(name, true),
-                        this.influxV9Utils.tenantIdPart(tenantId),
-                        this.influxV9Utils.regionPart(this.region),
+                        this.influxV9Utils.privateTenantIdPart(tenantId),
+                        this.influxV9Utils.privateRegionPart(this.region),
                         this.influxV9Utils.startTimePart(startTime),
                         this.influxV9Utils.dimPart(dimensions),
                         this.influxV9Utils.endTimePart(endTime),
@@ -140,11 +142,12 @@ public class InfluxV9StatisticRepo implements StatisticRepo{
 
       for (Serie serie : series.getSeries()) {
 
-        Statistics statistics = new Statistics(serie.getName(), serie.getTags(),
+        Statistics statistics = new Statistics(serie.getName(),
+                                               this.influxV9Utils.filterPrivateTags(serie.getTags()),
                                                Arrays.asList(translateNames(serie.getColumns())));
 
         for (Object[] values : serie.getValues()) {
-          statistics.addStatistics(Arrays.asList(values));
+          statistics.addStatistics(buildValsList(values));
         }
 
         statisticsList.add(statistics);
@@ -154,6 +157,21 @@ public class InfluxV9StatisticRepo implements StatisticRepo{
     }
 
     return statisticsList;
+  }
+
+  private List<Object> buildValsList(Object[] values) {
+
+    ArrayList<Object> valObjArryList = new ArrayList<>();
+
+    // First value is the timestamp.
+    valObjArryList.add(values[0]);
+
+    // All other values are doubles.
+    for (int i = 1; i < values.length; ++i) {
+      valObjArryList.add(Double.parseDouble((String) values[i]));
+    }
+
+    return valObjArryList;
   }
 
   private String[] translateNames(String[] columnNamesArry) {

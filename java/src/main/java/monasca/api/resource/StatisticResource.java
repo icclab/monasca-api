@@ -82,12 +82,16 @@ public class StatisticResource {
         Validation.parseValidateAndNormalizeStatistics(COMMA_SPLITTER.split(statisticsStr));
     Map<String, String> dimensions =
         Strings.isNullOrEmpty(dimensionsStr) ? null : Validation.parseAndValidateNameAndDimensions(
-            name, dimensionsStr);
+            name, dimensionsStr, true);
 
 
-    return Links.paginateStatistics(this.persistUtils.getLimit(limit),
-                          repo.find(tenantId, name, dimensions, startTime, endTime, statistics,
-                                    period, offset, this.persistUtils.getLimit(limit),
-                                    mergeMetricsFlag), uriInfo);
+      return Links.paginateStatistics(this.persistUtils.getLimit(limit),
+                                      repo.find(tenantId, name, dimensions, startTime, endTime,
+                                                statistics, period, offset,
+                                                this.persistUtils.getLimit(limit),
+                                                mergeMetricsFlag),
+                                      uriInfo);
+
   }
+
 }

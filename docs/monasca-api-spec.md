@@ -26,6 +26,10 @@ Document Version: v2.0
   - [Common Http Request Headers](#common-http-request-headers)
   - [Non-standard request headers](#non-standard-request-headers)
 - [Common Responses](#common-responses)
+- [Paging](#paging)
+  - [Offset](#offset)
+  - [Limit](#limit)
+- [JSON Results](#json-results)
 - [Versions](#versions)
   - [List Versions](#list-versions)
     - [GET](#get)
@@ -86,9 +90,9 @@ Document Version: v2.0
       - [Status Code](#status-code-2)
       - [Response Body](#response-body-4)
       - [Response Examples](#response-examples-3)
-- [Statistics](#statistics)
-  - [List statistics](#list-statistics)
-    - [GET /v2.0/metrics/statistics](#get-v20metricsstatistics)
+- [Metric Names](#metric-names)
+  - [List names](#list-names)
+    - [GET /v2.0/metrics/names](#get-v20metricsnames)
       - [Headers](#headers-5)
       - [Path Parameters](#path-parameters-5)
       - [Query Parameters](#query-parameters-5)
@@ -98,9 +102,9 @@ Document Version: v2.0
       - [Status Code](#status-code-3)
       - [Response Body](#response-body-5)
       - [Response Examples](#response-examples-4)
-- [Notification Methods](#notification-methods)
-  - [Create Notification Method](#create-notification-method)
-    - [POST /v2.0/notification-methods](#post-v20notification-methods)
+- [Statistics](#statistics)
+  - [List statistics](#list-statistics)
+    - [GET /v2.0/metrics/statistics](#get-v20metricsstatistics)
       - [Headers](#headers-6)
       - [Path Parameters](#path-parameters-6)
       - [Query Parameters](#query-parameters-6)
@@ -110,8 +114,9 @@ Document Version: v2.0
       - [Status Code](#status-code-4)
       - [Response Body](#response-body-6)
       - [Response Examples](#response-examples-5)
-  - [List Notification Methods](#list-notification-methods)
-    - [GET /v2.0/notification-methods](#get-v20notification-methods)
+- [Notification Methods](#notification-methods)
+  - [Create Notification Method](#create-notification-method)
+    - [POST /v2.0/notification-methods](#post-v20notification-methods)
       - [Headers](#headers-7)
       - [Path Parameters](#path-parameters-7)
       - [Query Parameters](#query-parameters-7)
@@ -121,8 +126,8 @@ Document Version: v2.0
       - [Status Code](#status-code-5)
       - [Response Body](#response-body-7)
       - [Response Examples](#response-examples-6)
-  - [Get Notification Method](#get-notification-method)
-    - [GET /v2.0/notification-methods/{notification_method_id}](#get-v20notification-methodsnotification_method_id)
+  - [List Notification Methods](#list-notification-methods)
+    - [GET /v2.0/notification-methods](#get-v20notification-methods)
       - [Headers](#headers-8)
       - [Path Parameters](#path-parameters-8)
       - [Query Parameters](#query-parameters-8)
@@ -132,8 +137,8 @@ Document Version: v2.0
       - [Status Code](#status-code-6)
       - [Response Body](#response-body-8)
       - [Response Examples](#response-examples-7)
-  - [Update Notification Method](#update-notification-method)
-    - [PUT /v2.0/notification-methods/{notification_method_id}](#put-v20notification-methodsnotification_method_id)
+  - [Get Notification Method](#get-notification-method)
+    - [GET /v2.0/notification-methods/{notification_method_id}](#get-v20notification-methodsnotification_method_id)
       - [Headers](#headers-9)
       - [Path Parameters](#path-parameters-9)
       - [Query Parameters](#query-parameters-9)
@@ -143,8 +148,8 @@ Document Version: v2.0
       - [Status Code](#status-code-7)
       - [Response Body](#response-body-9)
       - [Response Examples](#response-examples-8)
-  - [Delete Notification Method](#delete-notification-method)
-    - [DELETE /v2.0/notification-methods/{notification_method_id}](#delete-v20notification-methodsnotification_method_id)
+  - [Update Notification Method](#update-notification-method)
+    - [PUT /v2.0/notification-methods/{notification_method_id}](#put-v20notification-methodsnotification_method_id)
       - [Headers](#headers-10)
       - [Path Parameters](#path-parameters-10)
       - [Query Parameters](#query-parameters-10)
@@ -153,9 +158,9 @@ Document Version: v2.0
     - [Response](#response-10)
       - [Status Code](#status-code-8)
       - [Response Body](#response-body-10)
-- [Alarm Definitions](#alarm-definitions)
-  - [Create Alarm Definition](#create-alarm-definition)
-    - [POST /v2.0/alarm-definitions](#post-v20alarm-definitions)
+      - [Response Examples](#response-examples-9)
+  - [Delete Notification Method](#delete-notification-method)
+    - [DELETE /v2.0/notification-methods/{notification_method_id}](#delete-v20notification-methodsnotification_method_id)
       - [Headers](#headers-11)
       - [Path Parameters](#path-parameters-11)
       - [Query Parameters](#query-parameters-11)
@@ -164,9 +169,9 @@ Document Version: v2.0
     - [Response](#response-11)
       - [Status Code](#status-code-9)
       - [Response Body](#response-body-11)
-      - [Response Examples](#response-examples-9)
-  - [List Alarm Definitions](#list-alarm-definitions)
-    - [GET /v2.0/alarm-definitions](#get-v20alarm-definitions)
+- [Alarm Definitions](#alarm-definitions)
+  - [Create Alarm Definition](#create-alarm-definition)
+    - [POST /v2.0/alarm-definitions](#post-v20alarm-definitions)
       - [Headers](#headers-12)
       - [Path Parameters](#path-parameters-12)
       - [Query Parameters](#query-parameters-12)
@@ -176,29 +181,29 @@ Document Version: v2.0
       - [Status Code](#status-code-10)
       - [Response Body](#response-body-12)
       - [Response Examples](#response-examples-10)
-  - [Get Alarm Definition](#get-alarm-definition)
-    - [GET /v2.0/alarm-definitions/{alarm_definition_id}](#get-v20alarm-definitionsalarm_definition_id)
+  - [List Alarm Definitions](#list-alarm-definitions)
+    - [GET /v2.0/alarm-definitions](#get-v20alarm-definitions)
       - [Headers](#headers-13)
       - [Path Parameters](#path-parameters-13)
       - [Query Parameters](#query-parameters-13)
       - [Request Body](#request-body-13)
+      - [Request Examples](#request-examples-13)
     - [Response](#response-13)
       - [Status Code](#status-code-11)
       - [Response Body](#response-body-13)
       - [Response Examples](#response-examples-11)
-  - [Update Alarm Definition](#update-alarm-definition)
-    - [PUT /v2.0/alarm-definitions/{alarm_definition_id}](#put-v20alarm-definitionsalarm_definition_id)
+  - [Get Alarm Definition](#get-alarm-definition)
+    - [GET /v2.0/alarm-definitions/{alarm_definition_id}](#get-v20alarm-definitionsalarm_definition_id)
       - [Headers](#headers-14)
       - [Path Parameters](#path-parameters-14)
       - [Query Parameters](#query-parameters-14)
       - [Request Body](#request-body-14)
-      - [Request Examples](#request-examples-13)
     - [Response](#response-14)
       - [Status Code](#status-code-12)
       - [Response Body](#response-body-14)
       - [Response Examples](#response-examples-12)
-  - [Patch Alarm Definition](#patch-alarm-definition)
-    - [PATCH /v2.0/alarm-definitions/{alarm_definition_id}](#patch-v20alarm-definitionsalarm_definition_id)
+  - [Update Alarm Definition](#update-alarm-definition)
+    - [PUT /v2.0/alarm-definitions/{alarm_definition_id}](#put-v20alarm-definitionsalarm_definition_id)
       - [Headers](#headers-15)
       - [Path Parameters](#path-parameters-15)
       - [Query Parameters](#query-parameters-15)
@@ -208,8 +213,8 @@ Document Version: v2.0
       - [Status Code](#status-code-13)
       - [Response Body](#response-body-15)
       - [Response Examples](#response-examples-13)
-  - [Delete Alarm Definition](#delete-alarm-definition)
-    - [DELETE /v2.0/alarm-definitions/{alarm_definition_id}](#delete-v20alarm-definitionsalarm_definition_id)
+  - [Patch Alarm Definition](#patch-alarm-definition)
+    - [PATCH /v2.0/alarm-definitions/{alarm_definition_id}](#patch-v20alarm-definitionsalarm_definition_id)
       - [Headers](#headers-16)
       - [Path Parameters](#path-parameters-16)
       - [Query Parameters](#query-parameters-16)
@@ -218,8 +223,9 @@ Document Version: v2.0
     - [Response](#response-16)
       - [Status Code](#status-code-14)
       - [Response Body](#response-body-16)
-  - [List Alarms](#list-alarms)
-    - [GET /v2.0/alarms](#get-v20alarms)
+      - [Response Examples](#response-examples-14)
+  - [Delete Alarm Definition](#delete-alarm-definition)
+    - [DELETE /v2.0/alarm-definitions/{alarm_definition_id}](#delete-v20alarm-definitionsalarm_definition_id)
       - [Headers](#headers-17)
       - [Path Parameters](#path-parameters-17)
       - [Query Parameters](#query-parameters-17)
@@ -228,19 +234,19 @@ Document Version: v2.0
     - [Response](#response-17)
       - [Status Code](#status-code-15)
       - [Response Body](#response-body-17)
-      - [Response Examples](#response-examples-14)
-  - [List Alarms State History](#list-alarms-state-history)
-    - [GET /v2.0/alarms/state-history](#get-v20alarmsstate-history)
+  - [List Alarms](#list-alarms)
+    - [GET /v2.0/alarms](#get-v20alarms)
       - [Headers](#headers-18)
       - [Path Parameters](#path-parameters-18)
       - [Query Parameters](#query-parameters-18)
       - [Request Body](#request-body-18)
+      - [Request Examples](#request-examples-17)
     - [Response](#response-18)
       - [Status Code](#status-code-16)
       - [Response Body](#response-body-18)
       - [Response Examples](#response-examples-15)
-  - [Get Alarm](#get-alarm)
-    - [GET /v2.0/alarms/{alarm_id}](#get-v20alarmsalarm_id)
+  - [List Alarms State History](#list-alarms-state-history)
+    - [GET /v2.0/alarms/state-history](#get-v20alarmsstate-history)
       - [Headers](#headers-19)
       - [Path Parameters](#path-parameters-19)
       - [Query Parameters](#query-parameters-19)
@@ -249,19 +255,18 @@ Document Version: v2.0
       - [Status Code](#status-code-17)
       - [Response Body](#response-body-19)
       - [Response Examples](#response-examples-16)
-  - [Update Alarm](#update-alarm)
-    - [PUT /v2.0/alarms/{alarm_id}](#put-v20alarmsalarm_id)
+  - [Get Alarm](#get-alarm)
+    - [GET /v2.0/alarms/{alarm_id}](#get-v20alarmsalarm_id)
       - [Headers](#headers-20)
       - [Path Parameters](#path-parameters-20)
       - [Query Parameters](#query-parameters-20)
       - [Request Body](#request-body-20)
-      - [Request Examples](#request-examples-17)
     - [Response](#response-20)
       - [Status Code](#status-code-18)
       - [Response Body](#response-body-20)
       - [Response Examples](#response-examples-17)
-  - [Patch Alarm](#patch-alarm)
-    - [PATCH /v2.0/alarms/{alarm_id}](#patch-v20alarmsalarm_id)
+  - [Update Alarm](#update-alarm)
+    - [PUT /v2.0/alarms/{alarm_id}](#put-v20alarmsalarm_id)
       - [Headers](#headers-21)
       - [Path Parameters](#path-parameters-21)
       - [Query Parameters](#query-parameters-21)
@@ -271,8 +276,8 @@ Document Version: v2.0
       - [Status Code](#status-code-19)
       - [Response Body](#response-body-21)
       - [Response Examples](#response-examples-18)
-  - [Delete Alarm](#delete-alarm)
-    - [DELETE /v2.0/alarms/{alarm_id}](#delete-v20alarmsalarm_id)
+  - [Patch Alarm](#patch-alarm)
+    - [PATCH /v2.0/alarms/{alarm_id}](#patch-v20alarmsalarm_id)
       - [Headers](#headers-22)
       - [Path Parameters](#path-parameters-22)
       - [Query Parameters](#query-parameters-22)
@@ -281,17 +286,28 @@ Document Version: v2.0
     - [Response](#response-22)
       - [Status Code](#status-code-20)
       - [Response Body](#response-body-22)
-  - [List Alarm State History](#list-alarm-state-history)
-    - [GET /v2.0/alarms/{alarm_id}/state-history](#get-v20alarmsalarm_idstate-history)
+      - [Response Examples](#response-examples-19)
+  - [Delete Alarm](#delete-alarm)
+    - [DELETE /v2.0/alarms/{alarm_id}](#delete-v20alarmsalarm_id)
       - [Headers](#headers-23)
       - [Path Parameters](#path-parameters-23)
       - [Query Parameters](#query-parameters-23)
       - [Request Body](#request-body-23)
-      - [Request Data](#request-data)
+      - [Request Examples](#request-examples-20)
     - [Response](#response-23)
       - [Status Code](#status-code-21)
       - [Response Body](#response-body-23)
-      - [Response Examples](#response-examples-19)
+  - [List Alarm State History](#list-alarm-state-history)
+    - [GET /v2.0/alarms/{alarm_id}/state-history](#get-v20alarmsalarm_idstate-history)
+      - [Headers](#headers-24)
+      - [Path Parameters](#path-parameters-24)
+      - [Query Parameters](#query-parameters-24)
+      - [Request Body](#request-body-24)
+      - [Request Data](#request-data)
+    - [Response](#response-24)
+      - [Status Code](#status-code-22)
+      - [Response Body](#response-body-24)
+      - [Response Examples](#response-examples-20)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -315,11 +331,10 @@ Before using the API, you must first get a valid auth token from Keystone. All A
 A metric is uniquely identified by a name and set of dimensions.
 
 ### Name
-Defines the name of a metric. A name is of type string(255).
+Defines the name of a metric. A name is of type string(255). The name may include any characters except the following: `> < = { } ( ) , ' " ; &`. If one of the restricted characters is needed, this can be achieved by double quoting the name.
 
 ### Dimensions
-A dictionary of (key, value) pairs. The key and value are of type string(255). The first character in the dimension is restricted to the following: `a-z A-Z 0-9 _ / \ $`. 
-However, the next characters may be any character except for the following: `; } { = , & ) ( "`. If one of the restricted characters is needed, this can be achieved by double quoting the dimensions. 
+A dictionary of (key, value) pairs. The key and value are of type string(255). Dimension keys may not begin with '_' (underscore). The dimensions string may include any characters except the following: `> < = { } ( ) , ' " ; &`. If one of the restricted characters is needed, this can be achieved by double quoting the dimension key or value containing the character.
 
 ### Text Representation
 In this document, metrics will be represented in the form `name{name=value,name=value}` where name is the metric name and the name=value pairs in the curly braces are the dimensions. For example, `cpu.idle_perc{service=monitoring,hostname=mini-mon}` represents a metric with the name "cpu.idle_perc" and the dimensions "service=monitoring" and "hostname=mini-mon".
@@ -333,7 +348,7 @@ Optionally, a measurement may also contain extra data about the value which is k
 For an example of how value meta is used, imagine this metric: http_status{url: http://localhost:8080/healthcheck, hostname=devstack, service=object-storage}.  The measurements for this metric have a value of either 1 or 0 depending if the status check succeeded. If the check fails, it would be helpful to have the actual http status code and error message if possible. So instead of just a value, the measurement will be something like:
 {Timestamp=now(), value=1, value_meta{http_rc=500, error=“Error accessing MySQL”}}
 
-Up to 16 separate key/value pairs of value meta are allowed per measurement. The keys are required and are trimmed of leading and trailing whitespace and have a maximum length of 255 characters. The value is a string and must not be null or empty and has a maximum length of 2048 characters. Whitespace is not trimmed from the values.
+Up to 16 separate key/value pairs of value meta are allowed per measurement. The keys are required and are trimmed of leading and trailing whitespace and have a maximum length of 255 characters. The value is a string and has a maximum length of 2048 characters. The value can be an empty string. Whitespace is not trimmed from the values.
 
 ## Alarm Definitions and Alarms
 
@@ -357,7 +372,7 @@ Alarm Definition 2:
 Alarm 1 - Metrics: cpu.idle_perc{service=monitoring,hostname=mini-mon}
 ```
 
-Now, when the metric cpu.idle_perc{service=monitoring,hostname=devstack} is received, the two Alarm Definitions define different behaviors. Since the value for the hostname dimension is different than the value for the existing Alarm from Alarm Definition 2, an new Alarm will be created.  Alarm Definition 1 does not have a value for match_by, so this metric is added to the existing Alarm. This gives us the following set of Alarm Definitions and Alarms:
+Now, when the metric cpu.idle_perc{service=monitoring,hostname=devstack} is received, the two Alarm Definitions define different behaviors. Since the value for the hostname dimension is different from the value for the existing Alarm from Alarm Definition 2, and Alarm Definition 2 has specified a match_by parameter on `hostname`, a new Alarm will be created.  Alarm Definition 1 does not have a value for match_by, so this metric is added to the existing Alarm. This gives us the following set of Alarm Definitions and Alarms:
 
 Alarm Definition 1:
 ```
@@ -399,7 +414,7 @@ and another will have the metrics:
 avg(cpu.idle_perc{service=monitoring,hostname=devstack}) and avg(cpu.user_perc{service=monitoring,hostname=devstack})
 ```
 
-Note that the value of match_by, "hostname", is used to match the metrics between the subexpressions, hence the name match_by.
+Note that the value of match_by, "hostname", is used to match the metrics between the subexpressions, hence the name 'match_by'.
 
 An Alarm will only get created when metrics are seen that match all subexpressions in the Alarm Definition.  If match_by is set, then each metric must have a value for at least one of the values in match_by. If match_by is not set, only one Alarm will be created for an Alarm Definition.
 
@@ -570,6 +585,11 @@ Once an Alarm Definition has been created, the value for match_by and any metric
 
 The only option to change metrics or match_by is to delete the existing Alarm Definition and create a new one. Deleting an Alarm Definition will delete all Alarms associated with it.
 
+## Notification Methods
+Notification methods are resources used to specify a notification name, type and address that notifications can be sent to. After a notification method has been created, it can be associated with actions in alarm definitions, such that when an alarm state transition occurs, one or more notifications can be sent.
+
+Currently, notification method types of email, PagerDuty and webhooks are supported. In the case of email, the address is the email address. In the case of PagerDuty, the address is the PagerDuty Service API Key. In the case of a webhook, the address is the URL of the webhook.
+
 # Common Request Headers
 This section documents the common request headers that are used in requests.
 
@@ -598,13 +618,106 @@ The Monasca API utilizes HTTP response codes to inform clients of the success or
 * 409 - Conflict
 * 422 - Unprocessable entity
 
+# Paging
+The Monasca API implements a paging mechanism to allow users to 'page' through result sets returned from the API. The paging functionality is limited to resources that return unbounded lists of results. This permits the user to consume as much data from the API as is needed without placing undo memory consumption burdens on the Monasca API Server. The paging mechanism is accomplished by allowing the user to specify an offset and a limit in the request URL as query parameters.
+
+For example:
+
+```
+"http://192.168.10.4:8080/v2.0/metrics/measurements?offset=2015-03-03T05%3A21%3A55Z&limit=1000&name=cpu.system_perc&dimensions=hostname%3Adevstack&start_time=2014-07-18T03%3A00%3A00Z"
+
+```
+
+Results sets that would otherwise return more results if there had not been a limit will include a next link with the offset prepopulated. The user only need use the next link to get the next set of results.
+
+If no limit is specified in the request URL, then a server-wide configurable limit is applied.
+
+
+## Offset
+Offsets can be either integer offsets, string offsets, or timestamp offsets. The use of either integer, string, or timestamp is determined by the resource being queried.
+
+For example, an integer offset would look like this:
+
+```
+offset=999
+
+```
+Integer offsets are zero based.
+
+A string offset would look like this:
+
+```
+offset=c60ec47e-5038-4bf1-9f95-4046c6e9a759
+
+```
+
+A timestamp offset would look like this:
+
+```
+offset=2104-01-01T00:00:01Z
+
+```
+
+Different resources use different offset types because of the internal implementation of different resources depends on different types of mechanisms for indexing and identifying resources. The type and form of the offsets for each resource can be determined by referring to the examples in each resource section below.
+
+The offset is determined by the ID of the last element in the result list. Users wishing to manually create a query URL can use the ID of the last element in the previously returned result set as the offset. The proceeding result set will return all elements with an ID greater than the offset up to the limit. The automatically generated offset in the next link does exactly this; it uses the ID in the last element.
+
+The offset can take the form of an integer, string, or timestamp, but the user should treat the offset as an opaque reference. When using offsets in manually generated URLs, users enter them as strings that look like integers, timestamps, or strings. Future releases may change the type and form of the offsets for each resource.
+
+## Limit
+The Monasca API has a server-wide default limit that is applied. Users may specifiy their own limit in the URL, but the server-wide limit may not be exceeded. The Monasca server-wide limit is configured in the Monasca API config file as maxQueryLimit. Users may specify a limit up to the maxQueryLimit.
+
+```
+limit=1000
+
+```
+# JSON Results
+All Monasca API results are in the form of JSON. For resources that return a list of elements, the JSON object returned will contain a 'links' array and an 'elements' array.
+
+The 'links' array will contain a 'self' element that is the original URL of the request that was used to generate the result. The 'links' array may also contain a 'next' element if the number of elements in the result would exceed the query limit. The 'next' link can be used to query the Monasca API for the next set of results, thus allowing the user to page through lengthy data sets.
+
+The 'elements' array will contain the items from the resource that match the query parameters. Each element will have an 'id' element. The 'id' element of the last item in the elements list is used as the offset in the 'next' link.
+
+For example:
+
+```
+{
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/metrics&limit=2"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/metrics?offset=1&limit=2"
+        }
+    ],
+    "elements": [
+        {
+            "id": 0,
+            "name": "name1",
+            "dimensions": {
+                "key1": "value1"
+            }
+        },
+        {
+            "id": 1,
+            "name": "name2",
+            "dimensions": {
+                "key1": "value1"
+            }
+        }
+    ]
+}
+```
+
 # Versions
 The versions resource supplies operations for accessing information about supported versions of the API.
 
 ## List Versions
 Lists the supported versions of the Monasca API.
 
-### GET
+### GET /
 
 #### Headers
 * X-Auth-Token (string, required) - Keystone auth token
@@ -633,12 +746,17 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of supported versions.
+Returns a JSON object with a 'links' array of links and an 'elements' array of supported versions.
 
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/"
+        }
+    ],
     "elements": [
         {
             "id": "v2.0",
@@ -707,7 +825,7 @@ Returns a JSON version object with details about the specified version.
 ___
 
 # Metrics
-The metrics resource allows metrics to be created and queried.
+The metrics resource allows metrics to be created and queried. The `X-Auth-Token` is used to derive the tenant that submits metrics. Metrics are stored and scoped to the tenant that submits them, or if the `tenant_id` query parameter is specified and the tenant has the `monitoring-delegate` role, the metrics are stored using the specified tenant ID.
 
 ## Create Metric
 Create metrics.
@@ -722,7 +840,7 @@ Create metrics.
 None.
 
 #### Query Parameters
-* tenant_id (string, optional, restricted) - Tenant ID to create metric on behalf of. Usage of this query parameter requires the `monitoring-delegate` role.
+* tenant_id (string, optional, restricted) - Tenant ID to create metrics on behalf of. This parameter can be used to submit metrics from one tenant, to another. Normally, this parameter is used when the Agent is being run as an operational monitoring tenant, such as monitoring OpenStack infrastructure, and needs to submit metrics for an OpenStack resource, such as a VM, but those metrics need to be accessible to the tenant that owns the resource. Usage of this query parameter requires the `monitoring-delegate` role. 
 
 #### Request Body
 Consists of a single metric object or an array of metric objects. A metric has the following properties:
@@ -753,7 +871,7 @@ Cache-Control: no-cache
       "key1":"value1",
       "key2":"value2"
    },
-   "timestamp":1405630174,
+   "timestamp":1405630174123,
    "value":1.0
 }
 ```
@@ -774,7 +892,7 @@ Cache-Control: no-cache
       "key1":"value1",
       "key2":"value2"
    },
-   "timestamp":1405630174,
+   "timestamp":1405630174123,
    "value":1.0,
    "value_meta":{
       "key1":"value1",
@@ -800,7 +918,7 @@ Cache-Control: no-cache
          "key1":"value1",
          "key2":"value2"
       },
-      "timestamp":1405630174,
+      "timestamp":1405630174123,
       "value":1.0
    },
    {  
@@ -809,7 +927,7 @@ Cache-Control: no-cache
          "key1":"value1",
          "key2":"value2"
       },
-      "timestamp":1405630174,
+      "timestamp":1405630174123,
       "value":2.0,
       "value_meta":{
          "key1":"value1",
@@ -842,6 +960,8 @@ None.
 #### Query Parameters
 * name (string(255), optional) - A metric name to filter metrics by.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
+* offset (integer, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -860,7 +980,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of metric definition objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of metric definition objects with the following fields:
 
 * name (string)
 * dimensions ({string(255): string(255)})
@@ -868,15 +988,26 @@ Returns a JSON object with an 'elements' array of metric definition objects with
 #### Response Examples
 ````
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/metrics"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/metrics?offset=1"
+        }
+    ],
     "elements": [
         {
+            "id": 0,
             "name": "name1",
             "dimensions": {
                 "key1": "value1"
             }
         },
         {
+            "id": 1,
             "name": "name2",
             "dimensions": {
                 "key1": "value1"
@@ -884,7 +1015,6 @@ Returns a JSON object with an 'elements' array of metric definition objects with
         }
     ]
 }
-
 ````
 ___
 
@@ -893,6 +1023,10 @@ Operations for accessing measurements of metrics.
 
 ## List measurements
 Get measurements for metrics.
+
+Metrics must be fully qualified with name and dimensions so that only measurements are returned for a single metric. If the metric name and dimensions given do not resolve to a single metric, an error will be displayed asking the user to futher qualify the metric with a name and additional dimensions.
+
+If users do not wish to see measurements for a single metric, but would prefer to have measurements from multiple metrics combined, a 'merge_metrics' flag can be specified. when 'merge_metrics' is set to true (**merge_metrics=true**), all meaurements for all metrics that satisfy the query parameters will be merged into a single list of measurements.
 
 ### GET /v2.0/metrics/measurements
 
@@ -908,13 +1042,16 @@ None.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
+* offset (timestamp, optional)
+* limit (integer, optional)
+* merge_metrics (boolean, optional) - allow multiple metrics to be combined into a single list of measurements.
 
 #### Request Body
 None.
 
 #### Request Examples
 ```
-GET /v2.0/metrics/measurements?name=cpu.system_perc&dimensions=hostname:devstack&start_time=2014-07-18T03:00:00Z HTTP/1.1
+GET /v2.0/metrics/measurements?name=cpu.system_perc&dimensions=hostname:devstack&start_time=2015-03-00T00:00:01Z HTTP/1.1
 Host: 192.168.10.4:8080
 Content-Type: application/json
 X-Auth-Token: 2b8882ba2ec44295bf300aecb2caa4f7
@@ -926,20 +1063,29 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of measurements objects for each unique metric with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of measurements objects for each unique metric with the following fields:
 
 * name (string(255)) - A name of a metric.
 * dimensions ({string(255): string(255)}) - The dimensions of a metric.
 * columns (array[string]) - An array of column names corresponding to the columns in measurements.
-* measurements (array[array[]]) - A two dimensional array of measurements for each timestamp.
+* measurements (array[array[]]) - A two dimensional array of measurements for each timestamp. The timestamp is in ISO 8601 combined date and time format, with millisecond resolution.
 
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/metrics/measurements?start_time=2015-03-00T00%3A00%3A00Z&name=cpu.system_perc&dimensions=hostname%3Adevstack"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/metrics/measurements?offset=2015-03-03T05%3A24%3A55Z&name=cpu.system_perc&dimensions=hostname%3Adevstack&start_time=2015-03-00T00%3A00%3A00Z"
+        }
+    ],
     "elements": [
         {
-            "id": "1425359919000",
+            "id": "2015-03-03T05:24:55Z",
             "name": "http_status",
             "dimensions": {
                 "url": "http://localhost:8774/v2.0",
@@ -947,27 +1093,23 @@ Returns a JSON object with an 'elements' array of measurements objects for each 
                 "service": "compute"
             },
             "columns": [
-                "id",
                 "timestamp",
                 "value",
                 "value_meta"
             ],
             "measurements": [
                 [
-                    13432920001,
-                    "2015-03-03T05:22:28Z",
+                    "2015-03-03T05:22:28.123Z",
                     0,
                     {}
                 ],
                 [
-                    13430420001,
-                    "2015-03-03T05:22:12Z",
+                    "2015-03-03T05:23:12.123Z",
                     0,
                     {}
                 ],
                 [
-                    13427670001,
-                    "2015-03-03T05:21:55Z",
+                    "2015-03-03T05:24:55.123Z",
                     1,
                     {
                         "rc": "404",
@@ -978,12 +1120,81 @@ Returns a JSON object with an 'elements' array of measurements objects for each 
         }
     ]
 }
+```
+___
 
+# Metric Names
+Operations for accessing names of metrics.
+
+## List names
+Get names for metrics.
+
+### GET /v2.0/metrics/names
+
+#### Headers
+* X-Auth-Token (string, required) - Keystone auth token
+* Accept (string) - application/json
+
+#### Path Parameters
+None.
+
+#### Query Parameters
+* dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
+* offset (integer, optional)
+* limit (integer, optional)
+
+#### Request Body
+None.
+
+#### Request Examples
+```
+GET /v2.0/metrics/names HTTP/1.1
+Host: 192.168.10.4:8080
+Content-Type: application/json
+X-Auth-Token: 2b8882ba2ec44295bf300aecb2caa4f7
+Cache-Control: no-cache
+```
+
+### Response
+#### Status Code
+* 200 - OK
+
+#### Response Body
+Returns a JSON object with a 'links' array of links and an 'elements' array of metric name objects for each unique metric name (not including dimensions) with the following fields:
+
+* name (string(255)) - A name of a metric.
+
+#### Response Examples
+```
+{
+    "elements": [
+        {
+            "name":"name1"
+        },
+        {
+            "name":"name2"
+        }
+    ],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/metrics/names?offset=tenantId%3region%26name1%26dimensionKey1%3DdimensionValue1%26dimensionKey2%3DdimensionValue2"
+        },
+        {
+            "rel": "next"
+            "href": http://192.168.10.4:8080/v2.0/metrics/names?offset=tenantId%3region%26name3%26dimensionKey1%3DdimensionValue1%26dimensionKey2%3DdimensionValue2
+        }
+    ]
+}
 ```
 ___
 
 # Statistics
 Operations for calculating statistics of metrics.
+
+Metrics must be fully qualified with name and dimensions so that only statistics are returned for a single metric. If the metric name and dimensions given do not resolve to a single metric, an error will be displayed asking the user to futher qualify the metric with a name and additional dimensions.
+
+If users do not wish to see statistics for a single metric, but would prefer to have statistics from multiple metrics combined, a 'merge_metrics' flag can be specified. when 'merge_metrics' is set to true (**merge_metrics=true**), all statistics for all metrics that satisfy the query parameters will be merged into a single list of statistics.
 
 ## List statistics
 Get statistics for metrics.
@@ -1004,6 +1215,9 @@ None.
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
 * period (integer, optional) - The time period to aggregate measurements by. Default is 300 seconds.
+* offset (timestamp, optional)
+* limit (integer, optional)
+* merge_metrics (boolean, optional) - allow multiple metrics to be combined into a single list of statistics.
 
 #### Request Body
 None.
@@ -1023,7 +1237,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of statistic objects for each unique metric with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of statistic objects for each unique metric with the following fields:
 
 * name (string(255)) - A name of a metric.
 * dimensions ({string(255): string(255)}) - The dimensions of a metric.
@@ -1033,9 +1247,19 @@ Returns a JSON object with an 'elements' array of statistic objects for each uni
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/metrics/statistics?start_time=2014-07-18T03%3A00%3A00Z&name=cpu.system_perc&dimensions=hostname%3Adevstack&statistics=avg%2Cmin%2Cmax%2Csum%2Ccount"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/metrics/statistics?offset=2014-07-18T03%3A22%3A00Z&name=cpu.system_perc&dimensions=hostname%3Adevstack&start_time=2014-07-18T03%3A00%3A00Z&statistics=avg%2Cmin%2Cmax%2Csum%2Ccount"
+        }
+    ],
     "elements": [
         {
+            "id": "2014-07-18T03:22:00Z",
             "name": "cpu.system_perc",
             "dimensions": {
                 "hostname": "devstack"
@@ -1058,7 +1282,7 @@ Returns a JSON object with an 'elements' array of statistic objects for each uni
                     8
                 ],
                 [
-                    "2014-07-18T03:10:00Z",
+                    "2014-07-18T03:21:00Z",
                     2.412941176470588,
                     1.71,
                     4.09,
@@ -1066,7 +1290,7 @@ Returns a JSON object with an 'elements' array of statistic objects for each uni
                     17
                 ],
                 [
-                    "2014-07-18T03:00:00Z",
+                    "2014-07-18T03:22:00Z",
                     2.1135294117647065,
                     1.62,
                     3.85,
@@ -1077,7 +1301,6 @@ Returns a JSON object with an 'elements' array of statistic objects for each uni
         }
     ]
 }
-
 ```
 ___
 
@@ -1164,7 +1387,8 @@ List all notification methods.
 None.
 
 #### Query Parameters
-None.
+* offset (string, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -1184,7 +1408,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of notification method objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of notification method objects with the following fields:
 
 * id (string) - ID of notification method
 * links ([link]) 
@@ -1195,7 +1419,16 @@ Returns a JSON object with an 'elements' array of notification method objects wi
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/notification-methods"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/notification-methods?offset=c60ec47e-5038-4bf1-9f95-4046c6e9a759"
+        }
+    ],
     "elements": [
         {
             "id": "35cc6f1c-3a29-49fb-a6fc-d9d97d190508",
@@ -1223,7 +1456,6 @@ Returns a JSON object with an 'elements' array of notification method objects wi
         }
     ]
 }
-
 ```
 ___
 
@@ -1516,6 +1748,8 @@ None.
 #### Query Parameters
 * name (string(255), optional) - Name of alarm to filter by.
 * dimensions (string, optional) - Dimensions of metrics to filter by specified as a comma separated array of (key, value) pairs as `key1:value1,key1:value1, ...`
+* offset (string, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -1534,7 +1768,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of alarm objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of alarm objects with the following fields:
 
 * id (string) - ID of alarm definition.
 * links ([link]) - Links to alarm definition.
@@ -1552,7 +1786,16 @@ Returns a JSON object with an 'elements' array of alarm objects with the followi
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/alarm-definitions?name=CPU%20percent%20greater%20than%2010&dimensions=hostname:devstack&state=UNDETERMINED"
+        },
+        {
+            "rel": "next",
+            "href": "http://localhost:8080/v2.0/alarm-definitions?offset=f9935bcc-9641-4cbf-8224-0993a947ea83&name=CPU%20percent%20greater%20than%2010&dimensions=hostname:devstack&state=UNDETERMINED"
+        }
+    ],
     "elements": [
         {
             "id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
@@ -1593,7 +1836,6 @@ Returns a JSON object with an 'elements' array of alarm objects with the followi
         }
     ]
 }
-
 ```
 ___
 
@@ -1966,7 +2208,10 @@ None.
 * alarm_definition_id (string, optional) - Alarm definition ID to filter by.
 * metric_name (string(255), optional) - Name of metric to filter by.
 * metric_dimensions ({string(255): string(255)}, optional) - Dimensions of metrics to filter by specified as a comma separated array of (key, value) pairs as `key1:value1,key1:value1, ...`
-* state (string) - State of alarm to filter by, either `OK`, `ALARM` or `UNDETERMINED`.
+* state (string, optional) - State of alarm to filter by, either `OK`, `ALARM` or `UNDETERMINED`.
+* state_updated_start_time (string, optional) - The start time in ISO 8601 combined date and time format in UTC.
+* offset (string, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -1985,18 +2230,29 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of alarm objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of alarm objects with the following fields:
 
 * id (string) - ID of alarm.
 * links ([link]) - Links to alarm.
 * alarm_definition_id (string) - Name of alarm.
 * metrics ({string, string(255): string(255)}) - The metrics associated with the alarm.
 * state (string) - State of alarm, either `OK`, `ALARM` or `UNDETERMINED`.
+* state_updated_timestamp - Timestamp in ISO 8601 combined date and time format in UTC when the state was last updated
+* created_timestamp - Timestamp in ISO 8601 combined date and time format in UTC when the alarm was created
 
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/alarms?name=cpu.system_perc&dimensions=hostname%3Adevstack&state=UNDETERMINED"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/alarms?offset=f9935bcc-9641-4cbf-8224-0993a947ea83&name=cpu.system_perc&dimensions=hostname%3Adevstack&state=UNDETERMINED"
+        }
+    ],
     "elements": [
         {
             "id": "f9935bcc-9641-4cbf-8224-0993a947ea83",
@@ -2030,6 +2286,8 @@ Returns a JSON object with an 'elements' array of alarm objects with the followi
                 }
             ],
             "state": "OK"
+            "state_updated_timestamp": "2015-03-20T21:04:49.000Z",
+            "created_timestamp": "2015-03-20T21:03:34.000Z"
         }
     ]
 }
@@ -2052,6 +2310,8 @@ None.
 * dimensions (string, optional) - Dimensions of metrics to filter by specified as a comma separated array of (key, value) pairs as `key1:value1,key1:value1, ...`
 * start_time (string, optional) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
+* offset (integer, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -2061,7 +2321,7 @@ None.
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of alarm state transition objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of alarm state transition objects with the following fields:
 
 * id - Alarm State Transition ID.
 * alarm_id (string) - Alarm ID.
@@ -2076,7 +2336,16 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/state-history?dimensions=hostname%3Adevstack"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/state-history?offset=1424451007004&dimensions=hostname%3Adevstack"
+        }
+    ],
     "elements": [
         {
             "id": "1424451007002",
@@ -2116,7 +2385,7 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
             ]
         },
         {
-            "id": "1424448727001",
+            "id": "1424451007003",
             "alarm_id": "5ec51b06-193b-49f7-bcf7-b80d11010137",
             "metrics": [
                 {
@@ -2155,7 +2424,7 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
             ]
         },
         {
-            "id": "1424448667000",
+            "id": "1424451007004",
             "alarm_id": "5ec51b06-193b-49f7-bcf7-b80d11010137",
             "metrics": [
                 {
@@ -2253,6 +2522,8 @@ Returns a JSON alarm object with the following fields:
       }
    }],
    "state":"OK"
+   "state_updated_timestamp": "2015-03-20T21:04:49.000Z",
+   "created_timestamp": "2015-03-20T21:03:34.000Z"
 }
 ```
 ___
@@ -2327,6 +2598,8 @@ Returns a JSON alarm object with the following parameters:
      }
   }],
   "state":"OK"
+  "state_updated_timestamp": "2015-03-20T21:04:49.000Z",
+  "created_timestamp": "2015-03-20T21:03:34.000Z"
 }
 ```
 ___
@@ -2402,6 +2675,8 @@ Returns a JSON alarm object with the following fields:
         }
     ],
     "state": "OK"
+    "state_updated_timestamp": "2015-03-20T21:04:49.000Z",
+    "created_timestamp": "2015-03-20T21:03:34.000Z"
 }
 
 ```
@@ -2453,7 +2728,8 @@ List the alarm state history for the specified alarm.
 * alarm_id (string, required)
 
 #### Query Parameters
-None.
+* offset (integer, optional)
+* limit (integer, optional)
 
 #### Request Body
 None.
@@ -2471,7 +2747,7 @@ Cache-Control: no-cache
 * 200 - OK
 
 #### Response Body
-Returns a JSON object with an 'elements' array of alarm state transition objects with the following fields:
+Returns a JSON object with a 'links' array of links and an 'elements' array of alarm state transition objects with the following fields:
 
 * id - Alarm State Transition ID.
 * alarm_id (string) - Alarm ID.
@@ -2486,7 +2762,16 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
 #### Response Examples
 ```
 {
-    "links": [],
+    "links": [
+        {
+            "rel": "self",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0/state-history"
+        },
+        {
+            "rel": "next",
+            "href": "http://192.168.10.4:8080/v2.0/alarms/37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0/state-history?offset=1424452147006"
+        }
+    ],
     "elements": [
         {
             "id": "1424452147003",
@@ -2526,7 +2811,7 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
             ]
         },
         {
-            "id": "1424451727002",
+            "id": "1424452147004",
             "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
             "metrics": [
                 {
@@ -2563,7 +2848,7 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
             ]
         },
         {
-            "id": "1424451367001",
+            "id": "1424452147005",
             "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
             "metrics": [
                 {
@@ -2600,7 +2885,7 @@ Returns a JSON object with an 'elements' array of alarm state transition objects
             ]
         },
         {
-            "id": "1424444550000",
+            "id": "1424452147006",
             "alarm_id": "37d1ddf0-d7e3-4fc0-979b-25ac3779d9e0",
             "metrics": [
                 {

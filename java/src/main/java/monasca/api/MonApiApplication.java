@@ -50,6 +50,7 @@ import monasca.api.resource.exception.IllegalArgumentExceptionMapper;
 import monasca.api.resource.exception.InvalidEntityExceptionMapper;
 import monasca.api.resource.exception.JsonMappingExceptionManager;
 import monasca.api.resource.exception.JsonProcessingExceptionMapper;
+import monasca.api.resource.exception.MultipleMetricsExceptionMapper;
 import monasca.api.resource.exception.ThrowableExceptionMapper;
 import monasca.api.resource.serialization.SubAlarmExpressionSerializer;
 import monasca.common.middleware.AuthConstants;
@@ -61,7 +62,28 @@ import monasca.common.util.Injector;
  */
 public class MonApiApplication extends Application<ApiConfig> {
   public static void main(String[] args) throws Exception {
+    /*
+     * This should allow command line options to show the current version
+     * java -jar monasca-api.jar --version
+     * java -jar monasca-api.jar -version
+     * java -jar monasca-api.jar version
+     * Really anything with the word version in it will show the
+     * version as long as there is only one argument
+     * */
+    if (args.length == 1 && args[0].toLowerCase().contains("version")) {
+      showVersion();
+      System.exit(0);
+    }
+
     new MonApiApplication().run(args);
+  }
+
+  private static void showVersion() {
+    Package pkg;
+    pkg = Package.getPackage("monasca.api");
+
+    System.out.println("-------- Version Information --------");
+    System.out.println(pkg.getImplementationVersion());
   }
 
   @Override
@@ -100,6 +122,7 @@ public class MonApiApplication extends Application<ApiConfig> {
     environment.jersey().register(new JsonMappingExceptionManager());
     environment.jersey().register(new ConstraintViolationExceptionMapper());
     environment.jersey().register(new ThrowableExceptionMapper<Throwable>() {});
+    environment.jersey().register(new MultipleMetricsExceptionMapper());
 
     /** Configure Jackson */
     environment.getObjectMapper().setPropertyNamingStrategy(
@@ -110,7 +133,7 @@ public class MonApiApplication extends Application<ApiConfig> {
     module.addSerializer(new SubAlarmExpressionSerializer());
     environment.getObjectMapper().registerModule(module);
 
-    
+
     /** Configure CORS filter */
     Dynamic corsFilter = environment.servlets().addFilter("cors", CrossOriginFilter.class);
     corsFilter.addMappingForUrlPatterns(null, true, "/*");
@@ -157,6 +180,8 @@ public class MonApiApplication extends Application<ApiConfig> {
       authInitParams.put("AdminAuthMethod", config.middleware.adminAuthMethod);
       authInitParams.put("AdminUser", config.middleware.adminUser);
       authInitParams.put("AdminPassword", config.middleware.adminPassword);
+      authInitParams.put(AuthConstants.ADMIN_PROJECT_ID, config.middleware.adminProjectId);
+      authInitParams.put(AuthConstants.ADMIN_PROJECT_NAME, config.middleware.adminProjectName);
       authInitParams.put("MaxTokenCacheSize", config.middleware.maxTokenCacheSize);
       setIfNotNull(authInitParams, AuthConstants.TRUSTSTORE, config.middleware.truststore);
       setIfNotNull(authInitParams, AuthConstants.TRUSTSTORE_PASS, config.middleware.truststorePassword);

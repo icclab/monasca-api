@@ -28,7 +28,7 @@ import com.sun.jersey.spi.container.WebApplication;
  * Utilities for validating metric names.
  */
 public class MetricNameValidation {
-  private static final Pattern VALID_METRIC_NAME = Pattern.compile("^[a-zA-Z0-9_\\.\\-]+$");
+  private static final Pattern VALID_METRIC_NAME = Pattern.compile("[^><={}(), '\";&]+$");
 
   private MetricNameValidation() {}
 
@@ -44,15 +44,23 @@ public class MetricNameValidation {
    * 
    * @throws WebApplication if validation fails
    */
-  public static void validate(String metricName, @Nullable String service) {
+  public static void validate(String metricName, @Nullable String service, boolean nameRequiredFlag) {
+
     // General validations
-    if (Strings.isNullOrEmpty(metricName))
-      throw Exceptions.unprocessableEntity("Metric name is required");
+
+    if (Strings.isNullOrEmpty(metricName)) {
+      if (nameRequiredFlag) {
+        throw Exceptions.unprocessableEntity("Metric name is required");
+      } else {
+        return;
+      }
+    }
+
     if (metricName.length() > CreateMetricCommand.MAX_NAME_LENGTH)
       throw Exceptions.unprocessableEntity("Metric name %s must be %d characters or less",
           metricName, CreateMetricCommand.MAX_NAME_LENGTH);
     if (!Services.isReserved(metricName) && !VALID_METRIC_NAME.matcher(metricName).matches())
-      throw Exceptions.unprocessableEntity("Metric name %s may only contain: a-z A-Z 0-9 _ - .",
+      throw Exceptions.unprocessableEntity("Metric name %s may not contain: > < = { } ( ) ' \" , ; &",
           metricName);
 
     // Service specific validations
