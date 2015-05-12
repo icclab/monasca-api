@@ -53,16 +53,19 @@ public class MeasurementResource {
   @GET
   @Timed
   @Produces(MediaType.APPLICATION_JSON)
-  public Object get(@Context UriInfo uriInfo, @HeaderParam("X-Tenant-Id") String tenantId,
-                    @QueryParam("name") String name, @QueryParam("dimensions") String dimensionsStr,
-                    @QueryParam("start_time") String startTimeStr,
-                    @QueryParam("end_time") String endTimeStr,
-                    @QueryParam("offset") String offset,
-                    @QueryParam("limit") String limit,
-                    @QueryParam("merge_metrics") Boolean mergeMetricsFlag)
-      throws Exception {
+  public Object get(
+      @Context UriInfo uriInfo,
+      @HeaderParam("X-Tenant-Id") String tenantId,
+      @QueryParam("name") String name,
+      @QueryParam("dimensions") String dimensionsStr,
+      @QueryParam("start_time") String startTimeStr,
+      @QueryParam("end_time") String endTimeStr,
+      @QueryParam("offset") String offset,
+      @QueryParam("limit") String limit,
+      @QueryParam("merge_metrics") String mergeMetricsFlag) throws Exception {
 
     // Validate query parameters
+    Validation.validateNotNullOrEmpty(name, "name");
     DateTime startTime = Validation.parseAndValidateDate(startTimeStr, "start_time", true);
     DateTime endTime = Validation.parseAndValidateDate(endTimeStr, "end_time", false);
     Validation.validateTimes(startTime, endTime);
@@ -70,13 +73,13 @@ public class MeasurementResource {
         dimensions =
         Strings.isNullOrEmpty(dimensionsStr) ? null : Validation
             .parseAndValidateNameAndDimensions(name, dimensionsStr, true);
+    Boolean mergeMetricsFlagBool = Validation.validateAndParseMergeMetricsFlag(mergeMetricsFlag);
 
-      return Links.paginateMeasurements(this.persistUtils.getLimit(limit),
-                                        repo.find(tenantId, name, dimensions, startTime, endTime,
-                                                  offset, this.persistUtils.getLimit(limit),
-                                                  mergeMetricsFlag),
-                                        uriInfo);
-
+    return Links.paginateMeasurements(this.persistUtils.getLimit(limit),
+                                      repo.find(tenantId, name, dimensions, startTime, endTime,
+                                                offset, this.persistUtils.getLimit(limit),
+                                                mergeMetricsFlagBool),
+                                      uriInfo);
   }
 
 }

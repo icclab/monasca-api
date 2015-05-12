@@ -331,10 +331,10 @@ Before using the API, you must first get a valid auth token from Keystone. All A
 A metric is uniquely identified by a name and set of dimensions.
 
 ### Name
-Defines the name of a metric. A name is of type string(255). The name may include any characters except the following: `> < = { } ( ) , ' " ; &`. If one of the restricted characters is needed, this can be achieved by double quoting the name.
+Defines the name of a metric. A name is of type string(255). The name may include any characters except the following: `> < = { } ( ) , ' " \ ; &`. A metric name surrounded by double quotes may include the following: `> < = { } ( ) , ; &`, but not `" \`. Note that JSON does allow control characters (such as `\n`), however these should not be used in metric names.
 
 ### Dimensions
-A dictionary of (key, value) pairs. The key and value are of type string(255). Dimension keys may not begin with '_' (underscore). The dimensions string may include any characters except the following: `> < = { } ( ) , ' " ; &`. If one of the restricted characters is needed, this can be achieved by double quoting the dimension key or value containing the character.
+A dictionary of (key, value) pairs. The key and value are of type string(255). Dimension keys may not begin with '_' (underscore). The dimension key and value strings may include any characters except the following: `> < = { } ( ) , ' " \ ; &`. A dimension key or value surrounded by double quotes may include the following: `> < = { } ( ) , ; &`, but not `" \`. Note that JSON does allow control characters (such as `\n`), however these should not be used in dimension keys or values.
 
 ### Text Representation
 In this document, metrics will be represented in the form `name{name=value,name=value}` where name is the metric name and the name=value pairs in the curly braces are the dimensions. For example, `cpu.idle_perc{service=monitoring,hostname=mini-mon}` represents a metric with the name "cpu.idle_perc" and the dimensions "service=monitoring" and "hostname=mini-mon".
@@ -441,7 +441,7 @@ If instead, match_by is set to `hostname,device`, then four alarms will be creat
 
 ```
 Alarm 1 - Metrics: disk.space_used_perc{device:/dev/sda1,hostname=mini-mon}
-Alarm 2 - Metrics: disk.space_used_perc{device:tmpfs,hostname=devstack}
+Alarm 2 - Metrics: disk.space_used_perc{device:tmpfs,hostname=mini-mon}
 Alarm 3 - Metrics: disk.space_used_perc{device:/dev/sda1,hostname=devstack}
 Alarm 4 - Metrics: disk.space_used_perc{device:tmpfs,hostname=devstack}
 ```
@@ -1038,7 +1038,7 @@ If users do not wish to see measurements for a single metric, but would prefer t
 None.
 
 #### Query Parameters
-* name (string(255), optional) - A metric name to filter metrics by.
+* name (string(255), required) - A metric name to filter metrics by.
 * dimensions (string, optional) - A dictionary to filter metrics by specified as a comma separated array of (key, value) pairs as `key1:value1,key2:value2, ...`
 * start_time (string, required) - The start time in ISO 8601 combined date and time format in UTC.
 * end_time (string, optional) - The end time in ISO 8601 combined date and time format in UTC.
